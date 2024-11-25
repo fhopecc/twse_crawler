@@ -3,6 +3,7 @@ import logging
 logger = logging.getLogger(Path(__file__).stem)
 失敗重爬次數 = 0
 def 爬取重大訊息(日期=None):
+    '爬取當日重大訊息'
     global 失敗重爬次數 
     from zhongwen.date import 取日期, 民國日期, 今日, 年底
     from zhongwen.file import 抓取
@@ -35,12 +36,12 @@ def 爬取重大訊息(日期=None):
         if len(ths) == 0:
             def 取值(td):
                 s = 刪空格(td.xpath('string()'))
-                if s == '':
-                    inputs = td.xpath('.//input')
-                    content = ';'.join(刪空格(i.get('value', '')) for i in inputs)
-                    content = content.replace('1;;1;1;;;;t05st02;', '')
-                    content = content.replace(';詳細資料', '')
-                    return content
+                if s == '': #
+                    inputs = td.xpath(".//input[@type='hidden']")
+                    # content = ';'.join(刪空格(i.get('value', '')) for i in inputs)
+                    # content = content.replace('1;;1;1;;;;t05st02;', '')
+                    # content = content.replace(';詳細資料', '')
+                    return inputs[-1].get('value')
                 return s
             return [取值(td) for td in tr.xpath('td')]
         return [th.xpath('string()') for th in ths]

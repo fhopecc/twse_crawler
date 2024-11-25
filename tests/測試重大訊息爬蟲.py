@@ -8,9 +8,9 @@ class Test(unittest.TestCase):
         from pathlib import Path
         from twse_crawler.重大訊息爬蟲 import 爬取重大訊息
         from zhongwen.pandas_tools import show_html
-        仿抓取.return_value = (Path(__file__).parent / 'test_t05st02.html').read_text()
-        df = 爬取重大訊息('113.7.24') 
-        self.assertEqual(df.loc[0, "公司名稱"], '華興')
+        仿抓取.return_value = (Path(__file__).parent / 'test_t05st02.html').read_text(encoding='utf8')
+        df = 爬取重大訊息('113.9.24') 
+        self.assertEqual(df.loc[0, "公司名稱"], '上海商銀')
         self.assertEqual(str(df.發言日期.dtypes), 'datetime64[ns]')
         self.assertEqual(str(df.歸屬日期.dtypes), 'datetime64[us]')
         self.assertIn('訊息', df.columns)
