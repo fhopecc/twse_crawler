@@ -4,3 +4,5 @@
 /資料庫
 /twse_crawler/__pycache__
 twse_crawler/__pycache__/重大訊息爬蟲.cpython-310.pyc
+*.pyc
+twse_crawler/__pycache__/重大訊息爬蟲.cpython-310.pyc
