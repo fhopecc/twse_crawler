@@ -1,5 +1,10 @@
 from pathlib import Path
 import logging
+from diskcache import Cache
+from pathlib import Path
+
+cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
+
 logger = logging.getLogger(Path(__file__).stem)
 失敗重爬次數 = 0
 
@@ -27,7 +32,7 @@ def 抓取重大訊息(日期=None):
     except requests.exceptions.JSONDecodeError as e:
         失敗重爬次數 += 1
         if 失敗重爬次數 > 5:
-            raise RuntimeError(f'重爬{民國日期(日期)}重大訊息2次仍失敗！')
+            raise RuntimeError(f'重爬{民國日期(日期)}重大訊息{失敗重爬次數}次仍失敗！')
         else:
             logger.info('因應網站防爬機制，暫停5秒重爬……')
             time.sleep(5)
@@ -42,11 +47,17 @@ def 抓取重大訊息(日期=None):
 
 def 抓取重大訊息詳細資料(參數字串):
     from zhongwen.檔 import 抓取
+    from zhongwen.時 import 取正式民國日期
     import json
-    p = 參數字串['parameters']
+    p = po = 參數字串['parameters']
     p = json.dumps(p)
     url = 'https://mops.twse.com.tw/mops/api/t05st02_detail'
-    j = 抓取(url, 會話識別網址='網站網址', 抓取方式='post', 參數=p, encoding='utf8',回傳資料形態='json')
+    logger.info(f'抓取{po["companyId"]}於{取正式民國日期(po["enterDate"])}重大訊息詳細資料……')
+    j = 抓取(url
+            ,會話識別網址='網站網址'
+            ,抓取方式='post'
+            ,回傳資料形態='json'
+            ,參數=p, encoding='utf8')
     return j
 
 def 爬取重大訊息(日期=None):

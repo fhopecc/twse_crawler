@@ -10,6 +10,7 @@ class Test(unittest.TestCase):
         df = 抓取重大訊息("113.12.15")
         p = df.iloc[0].詳細資料
         j = 抓取重大訊息詳細資料(p)
+        print(j)
         # 顯示(df)
  
 if __name__ == '__main__':
