@@ -9,20 +9,24 @@ cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 
 股利分派情形庫 = Path(__file__).parent.parent / '資料庫' / '股利分派情形庫'
 
+def 取股利所屬年度(股利所屬期間):
+    import re
+    pat = r'(\d+)'
+    if ns:=re.findall(pat, 股利所屬期間):
+        return max(int(n) for n in ns)
+
 @cache.memoize('抓取股利分派資料', expire=24*60*60)
-@結果批次寫入(股利分派情形庫, '股利分派情形彙總表', '股東會召開年度'
-             ,自起始年底按年列舉至本年底(100))
 def 抓取股利分派情形彙總表(股東會召開年度):
     '''批號為股東會召開年度，以該年度年底表達，
-網路公布資料最早為民國100年，故預設爬取自100年迄今年資料。
-'''
+網路公布資料最早為100年，故預設爬取自100年迄今年資料。'''
     from zhongwen.時 import 取日期, 年底, 取期間
     from zhongwen.文 import 刪空格
     from zhongwen.數 import 取數值
     from zhongwen.檔 import 抓取
     import pandas as pd
+
     logger.info(f"爬取{股東會召開年度.year}年度股東會股利分派資料……")
-    url = 'https://mops.twse.com.tw/server-java/t05st09sub'
+    url = 'https://mopsov.twse.com.tw/server-java/t05st09sub'
     資料={"step":1
          ,"TYPEK":"sii"
          ,"YEAR":股東會召開年度.year - 1911
@@ -59,7 +63,9 @@ def 抓取股利分派情形彙總表(股東會召開年度):
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
     df['股東會召開年度'] = 股東會召開年度
     first = lambda t: t[0].strip()
-    df['股票代號'] = df.公司代號名稱.str.split('-').map(first)
+    df['公司代號'] = df.公司代號名稱.str.split('-').map(first)
+    df['股利所屬期間'] = df['股利所屬年(季)度'].map(取期間)
+    df['股利所屬年度'] = df.股利所屬期間.map(lambda p: 取期間(p.year))
     renamer = {'股東配發內容_盈餘分配之現金股利(元/股)':'盈餘配息'
               ,'股東配發內容_法定盈餘公積、資本公積發放之現金(元/股)':'公積配息'
               ,'股東配發內容_盈餘轉增資配股(元/股)':'盈餘配股'
