@@ -37,13 +37,16 @@ def 抓取重大訊息(日期=None):
             logger.info('因應網站防爬機制，暫停5秒重爬……')
             time.sleep(5)
             return 抓取重大訊息(日期)
-
-    欄位名稱 = [t['main'] for t in j['result']['titles']]
-    df = pd.DataFrame(j['result']['data'], columns=欄位名稱)
-    df['發言日期'] = df.發言日期.map(取日期)
-    df.loc[:, '歸屬日期'] = 日期
-    失敗重爬次數 = 0
-    return df
+    try:
+        欄位名稱 = [t['main'] for t in j['result']['titles']]
+        df = pd.DataFrame(j['result']['data'], columns=欄位名稱)
+        df['發言日期'] = df.發言日期.map(取日期)
+        df.loc[:, '歸屬日期'] = 日期
+        失敗重爬次數 = 0
+        return df
+    except TypeError:
+        # raise TypeError(f"物件型態錯誤：{j}")
+        return pd.DataFrame()
 
 def 抓取重大訊息詳細資料(參數字串):
     from zhongwen.檔 import 抓取
