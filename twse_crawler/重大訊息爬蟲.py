@@ -49,8 +49,8 @@ def 抓取重大訊息(日期=None):
         return pd.DataFrame()
 
 def 抓取重大訊息詳細資料(參數字串):
-    from zhongwen.檔 import 抓取
     from zhongwen.時 import 取正式民國日期
+    from zhongwen.檔 import 抓取
     import json
     p = po = 參數字串['parameters']
     p = json.dumps(p)
