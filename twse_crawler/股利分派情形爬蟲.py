@@ -5,9 +5,9 @@ from pathlib import Path
 import logging
 
 logger = logging.getLogger(Path(__file__).stem)
-cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
+cache = Cache(Path.home() / '.twse_crawler' / Path(__file__).stem)
 
-股利分派情形庫 = Path(__file__).parent.parent / '資料庫' / '股利分派情形庫'
+股利分派情形庫 = Path.home() / '.twse_crawler' / '資料庫' / '股利分派情形庫'
 
 def 取股利所屬年度(股利所屬期間):
     import re
