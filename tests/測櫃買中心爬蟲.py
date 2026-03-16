@@ -3,12 +3,12 @@ import unittest
 class Test(unittest.TestCase):
 
     def test抓轉交換債發行資料(self):
-        from 股票分析.櫃買中心爬蟲 import 抓轉交換債發行資料, cache
-        from zhongwen.表 import 顯示
+        from twse_crawler.櫃買中心爬蟲 import 抓轉交換債發行資料, cache
         from zhongwen.快取 import 刪除指定名稱快取
+        from zhongwen.表 import 表示
         刪除指定名稱快取(cache, '抓轉交換債發行資料')
         df = 抓轉交換債發行資料()
-        顯示(df)
+        表示(df)
 
     def test抓取上櫃股票行情(self):
         from twse_crawler.櫃買中心爬蟲 import 抓取上櫃股票行情, cache
@@ -44,6 +44,6 @@ if __name__ == '__main__':
     # unittest.main()
     suite = unittest.TestSuite()
     # suite.addTest(Test('test抓上櫃股票基本資料'))
-    # suite.addTest(Test('test抓轉交換債發行資料'))
-    suite.addTest(Test('test抓取上櫃股票行情'))
+    suite.addTest(Test('test抓轉交換債發行資料'))
+    # suite.addTest(Test('test抓取上櫃股票行情'))
     unittest.TextTestRunner().run(suite)
