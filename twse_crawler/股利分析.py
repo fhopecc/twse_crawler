@@ -1,6 +1,7 @@
 from zhongwen.pandas_tools import 可顯示, 製作排行榜
 from zhongwen.快取 import 增加快取時序分析結果
-from zhongwen.庫 import 通知執行時間, 增加定期更新
+from zhongwen.程式 import 通知執行時間
+from zhongwen.庫 import 增加定期更新
 from diskcache import Cache, Index
 from pathlib import Path
 import functools
@@ -28,7 +29,7 @@ def 取股利表(股票=None):
     from twse_crawler.公開資訊觀測站爬蟲 import 抓取公司股利分派公告資料彙總表
     from twse_crawler.股利分派情形爬蟲 import 抓取股利分派情形彙總表
     from twse_crawler.公開資訊觀測站爬蟲 import 股利資料庫
-    from 股票分析.股票基本資料分析 import 查股票代號
+    from twse_crawler.股票基本資料分析 import 查股票代號
     from zhongwen.時 import 取期間, 今日, 本年度, 上年度
     from zhongwen.庫 import 批次載入
     from zhongwen.數 import 取數值
@@ -130,7 +131,7 @@ def 取歷年股利表(股票=None):
     四、來源係公開資訊觀測站公司股利分派公告資料彙總表。
     五、已過濾股利為零或空值者，惟應了解前者為何會寫入資料庫，並避免類此情事發生，以提升空間及存取效率。
     '''
-    from 股票分析.股票基本資料分析 import 查股票代號
+    from twse_crawler.股票基本資料分析 import 查股票代號
     from zhongwen.時 import 取期間
     if 股票:
         股票代號 = 查股票代號(股票)
@@ -154,7 +155,7 @@ def 取歷年每股盈餘表(股票=None):
     一、即取第四季累積損益表之每股盈餘。
     二、指定股票則傳回該股票歷年每股盈餘表。
     '''
-    from 股票分析.股票基本資料分析 import 查股票代號, 查股票簡稱
+    from twse_crawler.股票基本資料分析 import 查股票代號, 查股票簡稱
     from 股票分析.損益表分析 import 取年度損益表
     from zhongwen.表 import 顯示
     if 股票:
@@ -179,7 +180,7 @@ def 預測配息率(股票, 歷年股利=None):
         無則設算分配半數盈餘。
     二、預測結果資料：預測配息率、預測配息率說明。
     '''
-    from 股票分析.股票基本資料分析 import 查股票簡稱
+    from twse_crawler.股票基本資料分析 import 查股票簡稱
     from zhongwen.時 import 取民國期間
     from zhongwen.表 import 顯示
     from zhongwen.文 import 臚列
@@ -235,7 +236,7 @@ def 依損益表預測每股盈餘(股票):
     三、預測結果：1.前年至次年每股盈餘；2.預測說明。
     '''
     from 股票分析.損益表分析 import 取前年至次年各季損益表, 取損益表
-    from 股票分析.股票基本資料分析 import 查股票簡稱, 查股票代號, 取股票基本資料彙總表
+    from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號, 取股票基本資料彙總表
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from zhongwen.時 import 取正式民國日期
     from zhongwen.數 import 取最簡約數
@@ -318,7 +319,7 @@ def 依歷年股利預測股利(股票):
     二、僅公布一季損益表資料則將該季每股盈餘作為前年至次年每季每股盈餘預測。
     三、預測結果：前年至次年股利、預測說明。
     '''
-    from 股票分析.股票基本資料分析 import 查股票簡稱, 查股票代號
+    from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from 股票分析.損益表分析 import 取前年至次年各季損益表, 取損益表, cache as acache
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from zhongwen.時 import 取正式民國日期
@@ -351,7 +352,7 @@ def 預測股利(股票, 歷年股利=None):
     from twse_crawler.自結損益 import 預測前年至次年每股盈餘 as 依自結損益預測每股盈餘, cache as bcache
     from twse_crawler.營收分析 import 預測前年至次年每股盈餘 as 依月營收預測每股盈餘, cache as ccache 
     from 股票分析.損益表分析 import 取損益表, 取前年至次年各季損益表, cache as acache
-    from 股票分析.股票基本資料分析 import 查股票簡稱, 查股票代號
+    from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from zhongwen.快取 import 刪除指定名稱快取
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.文 import 臚列
@@ -392,7 +393,7 @@ def 預測股利(股票, 歷年股利=None):
                          # ,['股利所屬期間', '財報期別', '營收月份', '自結損益月份'], '股利')
 def 分析歷史股利(歷年股利分派情形, 重新分析=False):
     '主鍵為公司代號'
-    from 股票分析.股票基本資料分析 import 查股票簡稱
+    from twse_crawler.股票基本資料分析 import 查股票簡稱
     from zhongwen.文 import 臚列
     from zhongwen.時 import 取日期
     from zhongwen.表 import 顯示

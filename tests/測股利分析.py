@@ -169,10 +169,11 @@ class Test(unittest.TestCase):
         顯示(h)
 
     def test取除權息概述(self):
-        from 股票分析.股票基本資料分析 import 查股票代號
-        from 股票分析.股利分析 import 取股利表, 取除權息概述
-        from zhongwen.表 import 顯示
+        from twse_crawler.股票基本資料分析 import 查股票代號
+        from twse_crawler.股利分析 import 取股利表, 取除權息概述
+        from zhongwen.表 import 表示
         df = 取股利表()
+        表示(df)
         富林二千廿四年股利 = df.query(
             '公司代號==@查股票代號("富林-KY") and 股利所屬年度.dt.year==2024').iloc[-1]
         r = 取除權息概述(富林二千廿四年股利)
@@ -183,5 +184,5 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     # unittest.main()
     suite = unittest.TestSuite()
-    suite.addTest(Test('test依損益表預測每股盈餘'))
+    suite.addTest(Test('test取除權息概述'))
     unittest.TextTestRunner().run(suite)

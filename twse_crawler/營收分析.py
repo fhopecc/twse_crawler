@@ -21,7 +21,7 @@ def 取歷月營收表(股票=None):
         每月15日前會先執行抓取上月營收彙總表更新月營收表資料。
     '''
     from twse_crawler.公開資訊觀測站爬蟲 import 月營收彙總表資料庫, 抓取月營收彙總表
-    from 股票分析.股票基本資料分析 import 查股票代號
+    from twse_crawler.股票基本資料分析 import 查股票代號
     from zhongwen.庫 import 批次載入
     from zhongwen.時 import 取期間, 今日, 上月
     if 股票:
@@ -50,7 +50,7 @@ def 預測前年至次年每股盈餘(股票, 歷月營收表=None):
     三、股票須公布2個月以上營收，否則產生「數據不足」例外。
     四、以股票快取預測結果，如快取日期落後最新營收日期時更新。
     '''
-    from 股票分析.股票基本資料分析 import 查股票簡稱, 查股票代號, 取股票基本資料彙總表
+    from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號, 取股票基本資料彙總表
     from twse_crawler.自結損益 import 預測前年至次年每股盈餘 as 依自結損益預測每股盈餘 
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from zhongwen.時 import 今年數, 取正式民國日期
@@ -178,7 +178,7 @@ def 分析月營收(股票, 重新分析=False):
     '''
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from 股票分析.趨勢分析 import 分析歷月數據增減情形, 年化趨勢評分
-    from 股票分析.股票基本資料分析 import 查股票簡稱
+    from twse_crawler.股票基本資料分析 import 查股票簡稱
     from zhongwen.時 import 今日
     from zhongwen.表 import 顯示, 數據不足
     import pandas as pd
@@ -229,7 +229,7 @@ def 預測前年至次年營收(股票, 歷月營收表=None):
     三、未公布月營收者，產生「數據不足」例外。
     四、僅公布1個月營收者，以該月營收數設算前年至次年各月營收。
     '''
-    from 股票分析.股票基本資料分析 import 查股票簡稱, 查股票代號
+    from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from zhongwen.時 import 今年數, 取正式民國日期
     from zhongwen.快取 import 刪除指定名稱快取
@@ -339,7 +339,7 @@ def 依台積電資本支出預測營收(股票):
     三、未公布月營收者，產生「數據不足」例外。
     四、僅公布1個月營收者，以該月營收數設算前年至次年各月營收。
     '''
-    from 股票分析.股票基本資料分析 import 查股票簡稱, 查股票代號
+    from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from zhongwen.時 import 上年數, 今年數, 取民國年度, 取民國月份, 取季別
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from 股票分析.財報分析 import 取歷年營收占台積電資本資出比例

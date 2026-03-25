@@ -34,7 +34,7 @@ def 預測前年至次年周期數據(歷史數據, 數據欄名
         俾於附加其他同數據分析說明後不重覆提及數據名稱。
     """
     from zhongwen.時 import 取前年至次年間, 取民國月份, 取民國年度, 取正式民國日期
-    from 股票分析.股票基本資料分析 import 查股票代號
+    from twse_crawler.股票基本資料分析 import 查股票代號
     from prophet.plot import add_changepoints_to_plot
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.數 import 取最簡約數
@@ -189,7 +189,7 @@ def 取自結損益表(股票=None):
     '''
     from twse_crawler.公開資訊觀測站爬蟲 import 抓取月自結損益彙總表
     from twse_crawler.公開資訊觀測站爬蟲 import 月自結損益彙總庫
-    from 股票分析.股票基本資料分析 import 查股票代號
+    from twse_crawler.股票基本資料分析 import 查股票代號
     from zhongwen.庫 import 批次載入
     from zhongwen.時 import 本月, 上月
     if 股票:
@@ -248,7 +248,7 @@ def 分析稅前利益(歷月自結損益, 屬合併損益=True):
     '一、分數、評語'
     from zhongwen.數 import 取數值
     from 股票分析.趨勢分析 import 分析歷月數據增減情形
-    from 股票分析.股票基本資料分析 import 取股票基本資料彙總表
+    from twse_crawler.股票基本資料分析 import 取股票基本資料彙總表
     import pandas as pd
     df = 歷月自結損益
     df = df.dropna(axis='columns', how='all')
@@ -401,7 +401,7 @@ def 預測前年至次年每股盈餘(股票, 歷月自結損益表=None):
     四、歷月自結損益資料要大於2筆。
     '''
     from 股票分析.損益表分析 import 取前年至次年各季損益表, cache as acache
-    from 股票分析.股票基本資料分析 import 查股票簡稱, 查股票代號
+    from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from zhongwen.時 import 取正式民國日期
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.數 import 取最簡約數
