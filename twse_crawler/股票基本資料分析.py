@@ -172,7 +172,7 @@ def 取股票基本資料彙總表(股票=None):
     三、可指定股票並取得該股票紀錄，未指定股票財傳回全部紀錄。
     '''
     from twse_crawler.公開資訊觀測站爬蟲 import 抓公司基本資料, cache
-    from 股票分析.可轉債分析 import 取公司發行可轉債彙總表
+    from twse_crawler.可轉債分析 import 取公司發行可轉債彙總表
     from zhongwen.快取 import 刪除指定名稱快取
     from zhongwen.數 import 取數值
     import pandas as pd
