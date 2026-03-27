@@ -18,7 +18,7 @@ def 取股利所屬年度(股利所屬期間):
 @cache.memoize('抓取股利分派資料', expire=24*60*60)
 def 抓取股利分派情形彙總表(股東會召開年度):
     '''
-    一、批號為股東會召開年度，以該年度年底表達。
+    一、批號為股東會召開民國年度，形式如114，以該年度年底表達。
     二、網路公布資料最早為100年，故預設爬取自100年迄今年資料。
     '''
     from zhongwen.時 import 取日期, 年底, 取期間
@@ -26,7 +26,10 @@ def 抓取股利分派情形彙總表(股東會召開年度):
     from zhongwen.數 import 取數值
     from zhongwen.檔 import 抓取
     import pandas as pd
-    股東會召開年度 = 取期間(114)
+    if isinstance(股東會召開年度, int):
+        股東會召開年度 = 取期間(股東會召開年度)
+    else:
+        股東會召開年度 = 取期間(股東會召開年度.year)
     logger.info(f"爬取{股東會召開年度.year}年度股東會股利分派資料……")
     url = 'https://mopsov.twse.com.tw/server-java/t05st09sub'
     資料={"step":1

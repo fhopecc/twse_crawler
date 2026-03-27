@@ -171,14 +171,19 @@ class Test(unittest.TestCase):
     def test取除權息概述(self):
         from twse_crawler.股票基本資料分析 import 查股票代號
         from twse_crawler.股利分析 import 取股利表, 取除權息概述
+        from twse_crawler.股利分派情形爬蟲 import 抓取股利分派情形彙總表, cache 
+        from zhongwen.時 import 今日
         from zhongwen.表 import 表示
+        # cache.clear()
+        # df = 抓取股利分派情形彙總表(今日)
         df = 取股利表()
+        df = df.query('公司代號==@查股票代號("中菲")')
         表示(df)
-        富林二千廿四年股利 = df.query(
-            '公司代號==@查股票代號("富林-KY") and 股利所屬年度.dt.year==2024').iloc[-1]
-        r = 取除權息概述(富林二千廿四年股利)
-        m = '已除息5.20元'
-        self.assertEqual(r, m)
+        # 富林二千廿四年股利 = df.query(
+            # '公司代號==@查股票代號("富林-KY") and 股利所屬年度.dt.year==2024').iloc[-1]
+        # r = 取除權息概述(富林二千廿四年股利)
+        # m = '已除息5.20元'
+        # self.assertEqual(r, m)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)

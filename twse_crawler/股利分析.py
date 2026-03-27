@@ -13,7 +13,7 @@ logger = logging.getLogger(Path(__file__).stem)
 
 歷史股利分析結果檔 = Index(str(Path.home() / '.twse_crawler' / r'資料庫/股利分派情形分析結果檔'))
 
-@functools.cache
+# @functools.cache
 @通知執行時間
 @cache.memoize('取股利表', expire=24*60*60)
 def 取股利表(股票=None):
