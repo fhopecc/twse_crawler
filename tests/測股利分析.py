@@ -176,13 +176,15 @@ class Test(unittest.TestCase):
         from zhongwen.表 import 表示
         # cache.clear()
         # df = 抓取股利分派情形彙總表(今日)
-        df = 取股利表()
-        df = df.query('公司代號==@查股票代號("中菲")')
-        表示(df)
+        # df = 取股利表()
+        # df = df.query('公司代號==@查股票代號("中菲")')
+        # 表示(df)
         # 富林二千廿四年股利 = df.query(
             # '公司代號==@查股票代號("富林-KY") and 股利所屬年度.dt.year==2024').iloc[-1]
-        # r = 取除權息概述(富林二千廿四年股利)
-        # m = '已除息5.20元'
+        # r = 取除權息概述('泰山')
+        r = 取股利表('泰山')
+
+        表示(r)
         # self.assertEqual(r, m)
 
 if __name__ == '__main__':

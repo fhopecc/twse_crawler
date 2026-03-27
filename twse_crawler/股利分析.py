@@ -13,7 +13,7 @@ logger = logging.getLogger(Path(__file__).stem)
 
 歷史股利分析結果檔 = Index(str(Path.home() / '.twse_crawler' / r'資料庫/股利分派情形分析結果檔'))
 
-# @functools.cache
+@functools.cache
 @通知執行時間
 @cache.memoize('取股利表', expire=24*60*60)
 def 取股利表(股票=None):
@@ -98,11 +98,17 @@ def 取股利表(股票=None):
                   'and (特別股配息==0 or 特別股配息.isna()))')
     return df
 
-def 取除權息概述(最近股利紀錄):
+def 取除權息概述(股票):
+    '''
+    如無除權息資料回傳空字串。
+    '''
     from zhongwen.時 import 取民國日期, 今日
     from datetime import date
     import pandas as pd
-    r = 最近股利紀錄
+    try:
+        r = 取股利表(股票).query('公告日期.dt.year == @今日.year').iloc[-1]
+    except IndexError:
+        return ''
     m = ''
     if isinstance(r.配息, float) and r.配息 > 0:
         if pd.notna(r.除息交易日):
