@@ -355,18 +355,17 @@ def 預測股利(股票, 歷年股利=None):
         悉闕，則告以數據不足。
     二、預測結果：前年至次年股利、預測股利說明、除息交易日、除權交易日、現金股利發放日
     三、除息交易日為最近一次除息交易日。
+    四、如已公布上年度股利，則說明較預測增減情形。
     '''
-    from twse_crawler.自結損益 import 預測前年至次年每股盈餘 as 依自結損益預測每股盈餘, cache as bcache
-    from twse_crawler.營收分析 import 預測前年至次年每股盈餘 as 依月營收預測每股盈餘, cache as ccache 
-    from 股票分析.損益表分析 import 取損益表, 取前年至次年各季損益表, cache as acache
+    from twse_crawler.自結損益 import 預測前年至次年每股盈餘 as 依自結損益預測每股盈餘
+    from twse_crawler.營收分析 import 預測前年至次年每股盈餘 as 依月營收預測每股盈餘
+    from 股票分析.損益表分析 import 取損益表, 取前年至次年各季損益表
     from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from zhongwen.快取 import 刪除指定名稱快取
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.文 import 臚列
+    from zhongwen.數 import 取增減百分比
     import pandas as pd
-    # acache.clear()
-    # bcache.clear()
-    # ccache.clear()
     配息率, 配息率說明 = 預測配息率(股票)
     for 預測每股盈餘 in [依自結損益預測每股盈餘, 依月營收預測每股盈餘, 依損益表預測每股盈餘]:
         try:
@@ -386,6 +385,13 @@ def 預測股利(股票, 歷年股利=None):
     預測股利說明 += f'，預測{臚列(年度)}年度股利分別為{臚列(股利)}元'
     預測股利說明 = 預測股利說明.replace('及0.00元', '及不配發股利', -1)
     預測結果 = pd.Series()
+    try:
+        d, m = 取上年度股利及說明(股票)
+        delta_percent = (d - 前年至次年股利.iloc[0])/前年至次年股利.iloc[0]
+        預測股利說明 += f'，{m}，較預測{取增減百分比(delta_percent)}'
+        前年至次年股利.iloc[0] = d
+    except Exception as e:
+        logger.error(e)
     預測結果['前年至次年股利'] = 前年至次年股利
     預測結果['預測股利說明'] = 預測股利說明
     for d in ['除息交易日', '除權交易日', '現金股利發放日']:
@@ -467,3 +473,18 @@ def 年度股利分派表(股票代號組=[]):
     # 今日至年底期間仍有可以配發股利，爰排除本年度。
     df = df.query('股利所屬年度 < @今日().year-1911') 
     return df
+
+def 取上年度股利及說明(股票):
+    '''
+    一、傳回指定股票上年度股利及說明。
+    '''
+    from zhongwen.時 import 上年度
+    from zhongwen.表 import 表示
+    df = 取股利表(股票)
+    r = df.query('股利所屬年度==@上年度').iloc[-1]
+    m = '、'.join(f'{d}{r[d]:.2f}元' for d in ['配息', '配股'] if r[d] > 0)
+    if r.配息>0 and r.配股 > 0:
+        m = f'{上年度.year-1911}年實際{m}，合計{r.配息+r.配股:.2f}元'
+    else:
+        m = f'{上年度.year-1911}年實際{m}'
+    return r.配息+r.配股, m
