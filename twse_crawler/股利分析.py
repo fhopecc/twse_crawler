@@ -25,6 +25,7 @@ def 取股利表(股票=None):
     四、來源為公司股利分派公告資料彙總表。
     五、過濾股利為零或空值者，惟應了解前者為何會寫入資料庫，
         並避免類此情事發生，以提升空間及存取效率。
+    六、股利分派情形彙總表係彙總董事會擬分派股利決議，尚無除權息日，作為股利表補充
     '''
     from twse_crawler.公開資訊觀測站爬蟲 import 抓取公司股利分派公告資料彙總表
     from twse_crawler.股利分派情形爬蟲 import 抓取股利分派情形彙總表
@@ -33,7 +34,7 @@ def 取股利表(股票=None):
     from zhongwen.時 import 取期間, 今日, 本年度, 上年度
     from zhongwen.庫 import 批次載入
     from zhongwen.數 import 取數值
-    from zhongwen.表 import 顯示
+    from zhongwen.表 import 表示
     import pandas as pd
 
     if 股票:
@@ -70,10 +71,10 @@ def 取股利表(股票=None):
     df['股利所屬年度'] = df.股利所屬期間.map(lambda p: 取期間(p.year))
 
     #  抓取股利分派情形彙總表作為補充
-    if 今日.month < 4:
-        df1 = 抓取股利分派情形彙總表(上年度)
-    else:
-        df1 = 抓取股利分派情形彙總表(本年度)
+    # if 今日.month < 4:
+        # df1 = 抓取股利分派情形彙總表(上年度)
+    # else:
+    df1 = 抓取股利分派情形彙總表(本年度)
     df1 = df1[["公司代號", '股利所屬期間',"配息" , "配股", "股利所屬年度"]]
     df1['股利所屬期間'] = df1.apply(取股利所屬期間, axis=1)
 
