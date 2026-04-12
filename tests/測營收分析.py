@@ -89,16 +89,18 @@ class Test(unittest.TestCase):
 
     def test分析月營收(self):
         from 股票分析.損益表分析 import 取損益表, cache
-        from twse_crawler.營收分析 import 分析月營收
+        from twse_crawler.營收分析 import 分析月營收, 預測前年至次年每股盈餘
         from zhongwen.快取 import 刪除指定名稱快取
-        from zhongwen.表 import 顯示
-        
-        s = 營收分析 = 分析月營收('鈊象', 重新分析=True)
-        顯示(s)
+        from zhongwen.表 import 表示
+        import zhongwen.快取 
+
+        zhongwen.快取.停止快取=True
+        r = 預測前年至次年每股盈餘('泰銘')
+        表示(r)
         self.assertFalse(True)
 
         r = 分析月營收('青鋼', 重新分析=True)
-        # 顯示(r)
+        # 表示(r)
         評語 = '114年6月營收轉為年減0%，102年1月轉為成長，且111年12月以來平均按月增加13萬餘元'
         self.assertEqual(r.評語, 評語)
 

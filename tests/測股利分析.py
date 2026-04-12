@@ -182,7 +182,7 @@ class Test(unittest.TestCase):
         # 富林二千廿四年股利 = df.query(
             # '公司代號==@查股票代號("富林-KY") and 股利所屬年度.dt.year==2024').iloc[-1]
         # r = 取除權息概述('泰山')
-        r = 預測股利('基士德-KY')
+        r = 預測股利('泰銘')
         表示(r)
         # self.assertEqual(r, m)
 
