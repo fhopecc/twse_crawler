@@ -5,7 +5,7 @@ from pathlib import Path
 import functools
 import logging
 
-營收分析結果快取檔 = Index(str(Path.home() / '.twse_crawler' / r'資料庫/營收分析結果快取檔'))
+營收分析結果快取檔 = Index(str(Path.home() / '.twse_crawler' / '快取' / '營收分析結果快取檔'))
 cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 logger = logging.getLogger(Path(__file__).stem)
 

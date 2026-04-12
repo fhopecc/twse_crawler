@@ -2,9 +2,9 @@ import unittest
 
 class Test(unittest.TestCase):
 
-    def test預測報酬率(self):
+    def test(self):
         from twse_crawler.行情分析 import 取最近上市櫃收盤行情, cache
-        from twse_crawler.行情分析 import 預測報酬率, cache
+        from twse_crawler.行情分析 import 預測報酬率
         from zhongwen.表 import 表示, 數據不足
 
         必須欄位 = set(['報酬率', '預測報酬率說明', '交易日期', '收盤價'

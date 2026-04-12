@@ -1,12 +1,13 @@
-from zhongwen.庫 import 通知執行時間, 增加定期更新
+from zhongwen.庫 import 通知執行時間
 from zhongwen.快取 import 增加快取時序分析結果
 from diskcache import Cache, Index
 from pathlib import Path
 import logging
 import functools
 logger = logging.getLogger(Path(__file__).stem)
-cache = Cache(Path.home() / 'twse_crawler' / 'cache' / Path(__file__).stem)
-預測報酬率結果快取檔 = Index(str(Path.home() / 'twse_crawler' / 'cache' / '預測報酬率結果快取檔'))
+cache = Cache(Path.home() / '.twse_crawler' / 'cache' / Path(__file__).stem)
+預測報酬率結果快取檔 = Index(str(Path.home() / '.twse_crawler' / 'cache' 
+                                             / '預測報酬率結果快取檔'))
 
 def 抓取近一週上市櫃收盤行情():
     from zhongwen.時 import 一日, 一週前, 今日, 是工作日, 最近工作日, 取正式民國日期
