@@ -17,15 +17,9 @@ class Test(unittest.TestCase):
     def test預測前年至次年周期數據(self):
         from 股票分析.自結損益 import 預測前年至次年周期數據
         from 股票分析.營收分析 import 預測前年至次年每股盈餘, 依台積電資本支出預測營收
-        from zhongwen.表 import 顯示
-        預測結果 = 依台積電資本支出預測營收('漢唐')
-        顯示(預測結果)
-        預測結果 = 預測前年至次年營收('台積電')
-
+        from zhongwen.表 import 表示
         預測結果 = 預測前年至次年每股盈餘('一零四')
-        顯示(預測結果)
-        # 預測結果 = 預測股利('豐興')
-        # print(預測結果)
+        表示(預測結果)
 
         預測結果 = 預測前年至次年周期數據(讀取測例('崑鼎'), '本月合併營業損益', '自結損益月份')
         for c in ['前年至次年各期數據', '預測說明', '趨勢起日', '數據頻率'
@@ -51,7 +45,7 @@ class Test(unittest.TestCase):
         print(r)
 
     def test預測前年至次年每股盈餘(self):
-        from 股票分析.自結損益 import 預測前年至次年每股盈餘
+        from twse_crawler.自結損益 import 預測前年至次年每股盈餘
         from zhongwen.表 import 數據不足, 顯示
 
         預測項目 = ['前年至次年每股盈餘','預測說明']
@@ -111,6 +105,6 @@ if __name__ == '__main__':
     # suite.addTest(Test('test預測前年至次年周期數據'))  
     # suite.addTest(Test('test分析歷月數據增減情形'))  
     # suite.addTest(Test('test載入自結損益表'))  
-    # suite.addTest(Test('test預測前年至次年每股盈餘'))  
-    suite.addTest(Test('test分析月稅前損益'))  
+    suite.addTest(Test('test預測前年至次年每股盈餘'))  
+    # suite.addTest(Test('test分析月稅前損益'))  
     unittest.TextTestRunner().run(suite)
