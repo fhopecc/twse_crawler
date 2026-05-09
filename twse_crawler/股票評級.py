@@ -88,7 +88,7 @@ def 分析成長性(股票):
     '''
     from twse_crawler.財報分析 import 依資料日期距今月數打折分數, 彙總分析
     from twse_crawler.現流表分析 import 分析自由現金流趨勢
-    from 股票分析.淨利分析 import 分析淨利
+    from twse_crawler.淨利分析 import 分析淨利
     from twse_crawler.營收分析 import 分析月營收
     r = 彙總分析(股票, [分析淨利, 取淨利成長領先指標, 分析自由現金流趨勢])
     return r
@@ -102,7 +102,7 @@ def 取淨利成長領先指標(股票):
     from twse_crawler.財報分析 import 取自由現金流對淨利比
     from twse_crawler.損益表分析 import 取損益表
     from twse_crawler.營收分析 import 分析月營收
-    from 股票分析.匯率分析 import 分析匯率
+    from twse_crawler.匯率分析 import 分析匯率
     import pandas as pd
     分數 = 0
     評語 = ''
@@ -192,6 +192,7 @@ def 取股票評級彙總表():
         try:
             return 評級股票(股票, 告示例外=False)
         except Exception as e:
+            raise e
             logger.error(e)
             return pd.Series()
     股票評級結果 = df.公司代號.apply(_評級股票)

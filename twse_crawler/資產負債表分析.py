@@ -25,8 +25,8 @@ def 取資產負債表(股票=None, 個體報表=False):
               母公司暨子公司所持有之母公司庫藏股股數（單位：股）
     '''
     from twse_crawler.股票基本資料分析 import 查股票代號, 查股票簡稱
-    from 股票分析.損益表分析 import 取近年損益表
-    from 股票分析.現流表分析 import 取近年現流表
+    from twse_crawler.損益表分析 import 取近年損益表
+    from twse_crawler.現流表分析 import 取近年現流表
     from zhongwen.庫 import 批次載入
     from zhongwen.表 import 顯示
 
@@ -49,7 +49,7 @@ def 取資產負債表(股票=None, 個體報表=False):
 
 def 分析投資(股票):
     '投資占比'
-    from 股票分析.財報分析 import 取財報彙總表
+    from twse_crawler.財報分析 import 取財報彙總表
     from zhongwen.數 import 取數值
     import pandas as pd
     import re
@@ -74,7 +74,7 @@ def 分析骯髒科目(股票):
         典型如無形資產、其他非流動資產及在建工程。
     二、欄位：分數(-3~0)、評語
     '''
-    from 股票分析.財報分析 import 取財報彙總表
+    from twse_crawler.財報分析 import 取財報彙總表
     from zhongwen.表 import 顯示
     import pandas as pd
     desc, score = '', 0
@@ -142,7 +142,7 @@ def 分析客戶保證金(股票):
     一、結果項目：評語、分數(0~10)。
     二、客戶保證金利息收入亦受重貼現率影響，評語提示允應分析重貼現率現況影響。
     '''
-    from 股票分析.趨勢分析 import 分析歷季數據增減情形, 年化趨勢評分
+    from twse_crawler.趨勢分析 import 分析歷季數據增減情形, 年化趨勢評分
     import pandas as pd
     歷史資產負債表 = 取資產負債表(股票)
     s = 分數 = 0

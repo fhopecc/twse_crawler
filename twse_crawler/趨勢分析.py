@@ -604,7 +604,7 @@ def 分析歷年數據增減情形(歷年數據, 數據欄位, 時間欄位
     四、表達數據季別，如啟用則會於數據名稱前置以民國年月表達之數據月份。
     五、表達浮點數值，如啟用則會於以小數2位表達數據。
     '''
-    from 股票分析.趨勢分析 import 分析本季同比
+    from twse_crawler.趨勢分析 import 分析本季同比
     from zhongwen.文 import 刪除末尾句號
     from zhongwen.時 import 取民國年度
     from zhongwen.數 import 計算增減率

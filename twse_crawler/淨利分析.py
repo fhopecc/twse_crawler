@@ -2,8 +2,8 @@ def 分析淨利率(股票):
     '''
     一、淨利率 = 淨利 / 營收
     '''
-    from 股票分析.趨勢分析 import 分析同比差異主次因, 分析本季同比, 分析歷季數據增減情形
-    from 股票分析.損益表分析 import 取損益表, cache
+    from twse_crawler.趨勢分析 import 分析同比差異主次因, 分析本季同比, 分析歷季數據增減情形
+    from twse_crawler.損益表分析 import 取損益表, cache
     歷季損益表 = 取損益表(股票)
     m, s = '', 0
     r = 分析歷季數據增減情形(歷季損益表, '淨利率', '財報日期'
@@ -34,8 +34,8 @@ def 分析淨利(股票=None):
     二、欄位：說明
     二、向舊相容欄位：評語、分數
     '''
-    from 股票分析.趨勢分析 import 分析同比差異主次因, 分析本季同比, 分析歷季數據增減情形
-    from 股票分析.損益表分析 import 取損益表, cache
+    from twse_crawler.趨勢分析 import 分析同比差異主次因, 分析本季同比, 分析歷季數據增減情形
+    from twse_crawler.損益表分析 import 取損益表, cache
     from zhongwen.表 import 顯示
     import pandas as pd
     # cache.clear()
@@ -68,8 +68,8 @@ def 分析稅前淨利(股票):
     一、稅前淨利(項目)=營利+業外損益(子項)。
     二、如無營利直接分析稅前淨利同比。
     '''
-    from 股票分析.趨勢分析 import 分析本季同比, 分析同比差異主次因
-    from 股票分析.損益表分析 import 取損益表
+    from twse_crawler.趨勢分析 import 分析本季同比, 分析同比差異主次因
+    from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.數 import 取增減百分比
     import pandas as pd
@@ -95,8 +95,8 @@ def 分析其他損益(股票):
     一、結果項目：說明。
     二、
     '''
-    from 股票分析.趨勢分析 import 分析本季同比
-    from 股票分析.損益表分析 import 取損益表
+    from twse_crawler.趨勢分析 import 分析本季同比
+    from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 顯示, 數據不足
     import pandas as pd
     分析結果 = pd.Series()
@@ -110,8 +110,8 @@ def 分析營利(股票):
     一、結果項目：說明。
     二、營利=毛利-費用
     '''
-    from 股票分析.趨勢分析 import 分析本季同比, 分析同比差異主次因
-    from 股票分析.損益表分析 import 取損益表, 分析營收
+    from twse_crawler.趨勢分析 import 分析本季同比, 分析同比差異主次因
+    from twse_crawler.損益表分析 import 取損益表, 分析營收
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.數 import 取增減百分比
     import pandas as pd
@@ -142,8 +142,8 @@ def 分析毛利(股票):
     一、結果項目：說明。
     二、毛利=營收-成本
     '''
-    from 股票分析.趨勢分析 import 分析本季同比, 分析同比差異主次因
-    from 股票分析.損益表分析 import 取損益表, 分析營收
+    from twse_crawler.趨勢分析 import 分析本季同比, 分析同比差異主次因
+    from twse_crawler.損益表分析 import 取損益表, 分析營收
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.數 import 取增減百分比
     import pandas as pd
@@ -167,8 +167,8 @@ def 分析業外損益(股票):
     '''
     一、欄位：說明、本季、同比。
     '''
-    from 股票分析.趨勢分析 import 分析本季同比 
-    from 股票分析.損益表分析 import 取損益表
+    from twse_crawler.趨勢分析 import 分析本季同比 
+    from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 顯示
     import pandas as pd
     歷季損益表 = 取損益表(股票)

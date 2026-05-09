@@ -12,7 +12,7 @@ def 分析歷季數據增減情形(歷季數據, 數據欄位, 時間欄位
                         ,表達數據名稱=True
                         ):
     '分析歷季數據增減情形移至「趨勢分析」模組，未來將刪除此保留向上相容版本'
-    from 股票分析.趨勢分析 import 分析歷季數據增減情形 as newfunc
+    from twse_crawler.趨勢分析 import 分析歷季數據增減情形 as newfunc
     from warnings import warn
     warn(f'分析歷季數據增減情形移至「趨勢分析」模組，未來將刪除此保留向上相容版本'
         ,DeprecationWarning, stacklevel=2)
@@ -21,7 +21,7 @@ def 分析歷季數據增減情形(歷季數據, 數據欄位, 時間欄位
 
 def 年化趨勢評分(本期, 同比, 連續增減次數, 統計期間='季', 增減百分點乘數=10):
     '年化趨勢評分移至「趨勢分析」模組，未來將刪除目前保留向上相容版本'
-    from 股票分析.趨勢分析 import 年化趨勢評分 as newfunc
+    from twse_crawler.趨勢分析 import 年化趨勢評分 as newfunc
     from warnings import warn
     warn(f'年化趨勢評分移至「趨勢分析」模組，未來將刪除此保留向上相容版本'
         ,DeprecationWarning, stacklevel=2)
@@ -317,8 +317,8 @@ def 分析損益趨勢(股票):
         惟分數上下限為正負5,000分；淨損：負5,000分，由損轉利因趨勢未明則給100分。
     '''
     from 股票分析.自結損益 import 預測前年至次年周期數據
-    from 股票分析.趨勢分析 import 分析本季同比
-    from 股票分析.損益表分析 import 取損益表
+    from twse_crawler.趨勢分析 import 分析本季同比
+    from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 顯示, 數據不足
     from math import isinf
     import numpy as np
@@ -371,8 +371,8 @@ def 分析其他損益(股票):
     '''
     一、其他損益=所得稅損益、停業單位損益、其他未細分損益
     '''
-    from 股票分析.趨勢分析 import 分析本季同比 
-    from 股票分析.損益表分析 import 取損益表
+    from twse_crawler.趨勢分析 import 分析本季同比 
+    from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 顯示
     import pandas as pd
     from math import copysign
@@ -386,8 +386,8 @@ def 分析營利(股票):
     一、結果項目：說明。
     二、營利=營收-成本-費用
     '''
-    from 股票分析.趨勢分析 import 分析本季同比, 分析同比差異主次因
-    from 股票分析.損益表分析 import 取損益表
+    from twse_crawler.趨勢分析 import 分析本季同比, 分析同比差異主次因
+    from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.數 import 取增減百分比
     import pandas as pd
@@ -480,8 +480,8 @@ def 分析業外損益(股票):
     '''
     一、欄位：說明、本季、同比。
     '''
-    from 股票分析.趨勢分析 import 分析本季同比 
-    from 股票分析.損益表分析 import 取損益表
+    from twse_crawler.趨勢分析 import 分析本季同比 
+    from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 顯示
     import pandas as pd
     from math import copysign
@@ -494,8 +494,8 @@ def 分析稅前損益(股票):
     一、稅前淨利(項目)=營利+業外損益(子項)。
     二、如無營利擲出數據不足例外。
     '''
-    from 股票分析.趨勢分析 import 分析本季同比, 分析同比差異主次因
-    from 股票分析.損益表分析 import 取損益表
+    from twse_crawler.趨勢分析 import 分析本季同比, 分析同比差異主次因
+    from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.數 import 取增減百分比
     import pandas as pd

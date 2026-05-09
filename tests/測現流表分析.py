@@ -5,8 +5,8 @@ class Test(unittest.TestCase):
     '依方法名稱字母順序測試'
 
     def test(self):
-        from 股票分析.現流表分析 import 取移動年度現流表, cache
-        from 股票分析.現流表分析 import 取現流表, 取累積現流表
+        from twse_crawler.現流表分析 import 取移動年度現流表, cache
+        from twse_crawler.現流表分析 import 取現流表, 取累積現流表
         from zhongwen.表 import 表示
         cache.clear()
 

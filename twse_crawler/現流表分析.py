@@ -136,7 +136,7 @@ def 取移動年度現流表(股票=None, 個體報表=False):
     交、僅限按季公布財報者。
     '''
     from twse_crawler.股票基本資料分析 import 查股票代號
-    from 股票分析.現流表分析 import 取現流表
+    from twse_crawler.現流表分析 import 取現流表
     from zhongwen.表 import 顯示
     import pandas as pd
     import numpy as np
@@ -168,7 +168,7 @@ def 取近年現流表(股票=None, 個體報表=False):
     一、主鍵：股票代號、財報日期及財報類型。
     '''
     from twse_crawler.股票基本資料分析 import 查股票代號
-    from 股票分析.損益表分析 import 取近年總額
+    from twse_crawler.損益表分析 import 取近年總額
     import pandas as pd
     import numpy as np
     if 股票:
@@ -225,7 +225,7 @@ def 現金水位(tifrs):
     return tifrs.現金/(營運現金需求(tifrs)/12)
 
 def 分析現流表結構(股票):
-    from 股票分析.財報分析 import 取財報彙總表
+    from twse_crawler.財報分析 import 取財報彙總表
     df = 取財報彙總表(股票)
     df['自由現金流'] = df['營業活動之淨現金流入（流出）'] + df['取得不動產、廠房及設備']
     return df
@@ -238,10 +238,10 @@ def 分析自由現金流(股票):
     三、年度自由現金流入較去年每增減1個百分點則分別增減連續增減次數10倍之分數，
         惟上下限為正負5,000分，流出則為負5,000分，由流出轉為流入因趨勢未明顯則為100分。
     '''
-    from 股票分析.趨勢分析 import 分析本季同比, 分析同比差異主次因, 年化趨勢評分
-    from 股票分析.趨勢分析 import 分析歷年數據增減情形
-    from 股票分析.淨利趨勢分析 import 分析營利
-    from 股票分析.財報分析 import 取財報彙總表
+    from twse_crawler.趨勢分析 import 分析本季同比, 分析同比差異主次因, 年化趨勢評分
+    from twse_crawler.趨勢分析 import 分析歷年數據增減情形
+    from twse_crawler.淨利趨勢分析 import 分析營利
+    from twse_crawler.財報分析 import 取財報彙總表
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.數 import 取最簡約數
     import pandas as pd
@@ -303,7 +303,7 @@ def 分析自由現金流趨勢(股票=None):
     三、前式係參考巴菲特定義股東自由現金流之原則設計。
     四、欄位：評語、評分(5)
     '''
-    from 股票分析.趨勢分析 import 分析歷季數據增減情形
+    from twse_crawler.趨勢分析 import 分析歷季數據增減情形
     from zhongwen.表 import 顯示
     import pandas as pd
     cs = 歷季移動年度現流表 = 取移動年度現流表(股票)

@@ -381,8 +381,8 @@ def 取前年至次年各季損益表(股票):
      ,'稀釋每股盈餘', '基本每股盈餘', '股數']]
 
 def 分析損益表(股票):
-    from 股票分析.財報分析 import 彙總分析
-    from 股票分析.淨利趨勢分析 import 分析損益趨勢
+    from twse_crawler.財報分析 import 彙總分析
+    from twse_crawler.淨利趨勢分析 import 分析損益趨勢
     return 彙總分析(股票, [分析累積損益表結構
                           ,分析年度損益表結構
                           ,分析損益表結構
@@ -394,7 +394,7 @@ def 分析營收(股票):
     一、分析結果：說明。
     二、分析季營收同比差異，並應進一步分析合約負債、台積電資本資出(未實作)、月營收、匯率等營收領先指標。
     '''
-    from 股票分析.趨勢分析 import 分析同比差異主次因, 分析歷季數據增減情形
+    from twse_crawler.趨勢分析 import 分析同比差異主次因, 分析歷季數據增減情形
     import pandas as pd
     歷季財報 = 取損益表(股票)
     if len(歷季財報) < 5: return pd.Series()

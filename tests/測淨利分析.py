@@ -4,8 +4,8 @@ import unittest
 class Test(unittest.TestCase):
     '依方法名稱字母順序測試'
     def test(self):
-        from 股票分析.淨利分析 import 分析淨利率
-        from 股票分析.財報分析 import cache
+        from twse_crawler.淨利分析 import 分析淨利率
+        from twse_crawler.財報分析 import cache
         from zhongwen.表 import 顯示
         import zhongwen.快取 
         # cache.clear()

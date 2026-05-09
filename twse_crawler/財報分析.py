@@ -112,7 +112,11 @@ def 取近年財報彙總表(股票, 個體報表=False):
               非流動負債合計、股本合計、權益總額、權益總計、
               母公司暨子公司所持有之母公司庫藏股股數（單位：股）
     '''
-    return 取移動年度財報彙總表(股票).iloc[-1]
+    try:
+        return 取移動年度財報彙總表(股票).iloc[-1]
+    except IndexError as e:
+        raise IndexError(f'{股票}無足夠財報彙總表資料：{e}')
+        
 
 def 依資料日期距今月數打折分數(分數, 資料日期):
     from zhongwen.時 import 今日
@@ -140,6 +144,9 @@ def 彙總分析(股票, 分析項目):
             rs.append(f(股票))
         except 數據不足 as e:
             logger.error(e)
+            continue
+        except IndexError as e:
+            logger.error(f'{股票}計算{f.__name__}發生錯誤{e}!')
             continue
     if len(rs)==0: 
         return pd.Series()
@@ -610,6 +617,9 @@ def 分析現金轉換周期(股票):
     from zhongwen.表 import 顯示
     import pandas as pd
     r = 取近年財報彙總表(股票)    
+    if r is None:
+        logger.error(f"{股票}無近年財報彙總表")
+        return pd.Series()
 
     if r.營利 > 0:
         if r.稅前淨利 > 0:

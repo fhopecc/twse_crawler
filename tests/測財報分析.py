@@ -67,13 +67,14 @@ class Test(unittest.TestCase):
     def test杜邦分析(self):
         from twse_crawler.財報分析 import 杜邦分析, 分析流動資產, cache, 取移動年度財報彙總表
         from twse_crawler.股票評級 import 評級股票
+        from twse_crawler.財報分析 import 取近年財報彙總表
         import zhongwen.快取
         from zhongwen.表 import 表示
         # 更新財報與自結損益及營收暨股利和行情()
         # cache.clear()
         # zhongwen.快取.停止快取=True
         # r = 杜邦分析('一零四')
-        df = 取移動年度財報彙總表()
+        df = 取近年財報彙總表('華南金')
         表示(df)
         self.assertFalse(True)
 

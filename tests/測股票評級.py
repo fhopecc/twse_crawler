@@ -9,12 +9,12 @@ class Test(unittest.TestCase):
         from twse_crawler.股票評級 import 取營利成長領先指標, 取業外成長領先指標
         from twse_crawler.股票評級 import cache as acache
         from 股票分析.人工分析 import cache as bcache
-        from zhongwen.表 import 顯示, 數據不足
+        from zhongwen.表 import 表示
         import zhongwen.快取
         bcache.clear()
         zhongwen.快取.停止快取=True
-        r = 評級股票('互動')
-        顯示(r)
+        r = 評級股票('2880')
+        表示(r)
         self.assertFalse(True)
 
 if __name__ == '__main__':

@@ -188,7 +188,7 @@ def 分析月營收(股票, 重新分析=False):
         「同比連續消長次數」、「短期營收較長期增減率」等指標。
     '''
     from twse_crawler.自結損益 import 預測前年至次年周期數據
-    from 股票分析.趨勢分析 import 分析歷月數據增減情形, 年化趨勢評分
+    from twse_crawler.趨勢分析 import 分析歷月數據增減情形, 年化趨勢評分
     from twse_crawler.股票基本資料分析 import 查股票簡稱
     from zhongwen.時 import 今日
     from zhongwen.表 import 顯示, 數據不足
@@ -287,7 +287,7 @@ def 依台積電月營收預測次年資本支出():
     '''
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from zhongwen.時 import 上年數, 今年數, 取民國月份
-    from 股票分析.現流表分析 import 取現流表
+    from twse_crawler.現流表分析 import 取現流表
     from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 顯示, 數據不足
     import pandas as pd
@@ -353,7 +353,7 @@ def 依台積電資本支出預測營收(股票):
     from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from zhongwen.時 import 上年數, 今年數, 取民國年度, 取民國月份, 取季別
     from twse_crawler.自結損益 import 預測前年至次年周期數據
-    from 股票分析.財報分析 import 取歷年營收占台積電資本資出比例
+    from twse_crawler.財報分析 import 取歷年營收占台積電資本資出比例
     from zhongwen.快取 import 刪除指定名稱快取
     from zhongwen.表 import 顯示, 數據不足
     import pandas as pd
