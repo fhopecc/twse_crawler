@@ -836,5 +836,5 @@ if __name__ == '__main__':
     elif args.rebuild_cashflow:
         重建現流資料庫()
     elif q:=args.quarter:
-        下載季報包(q, 重新下載=True, 覆寫=True)
-        # 爬取財報(q)
+        # 下載季報包(q, 重新下載=True, 覆寫=True)
+        爬取財報(q)
