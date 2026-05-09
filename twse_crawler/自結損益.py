@@ -400,7 +400,7 @@ def 預測前年至次年每股盈餘(股票, 歷月自結損益表=None):
     三、以股票快取預測結果，如快取日期落後最新自結損益日期時更新。
     四、歷月自結損益資料要大於2筆。
     '''
-    from 股票分析.損益表分析 import 取前年至次年各季損益表, cache as acache
+    from twse_crawler.損益表分析 import 取前年至次年各季損益表, cache as acache
     from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from zhongwen.時 import 取正式民國日期
     from zhongwen.表 import 顯示, 數據不足

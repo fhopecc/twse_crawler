@@ -56,7 +56,7 @@ def 預測前年至次年每股盈餘(股票, 歷月營收表=None):
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from zhongwen.時 import 今年數, 取正式民國日期
     from zhongwen.快取 import 刪除指定名稱快取
-    from 股票分析.損益表分析 import 取損益表
+    from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.數 import 取最簡約數
     from zhongwen.文 import 臚列
@@ -288,7 +288,7 @@ def 依台積電月營收預測次年資本支出():
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from zhongwen.時 import 上年數, 今年數, 取民國月份
     from 股票分析.現流表分析 import 取現流表
-    from 股票分析.損益表分析 import 取損益表
+    from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 顯示, 數據不足
     import pandas as pd
     

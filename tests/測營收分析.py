@@ -88,7 +88,7 @@ class Test(unittest.TestCase):
         顯示(預測結果)
 
     def test分析月營收(self):
-        from 股票分析.損益表分析 import 取損益表, cache
+        from twse_crawler.損益表分析 import 取損益表, cache
         from twse_crawler.營收分析 import 分析月營收, 預測前年至次年每股盈餘
         from zhongwen.快取 import 刪除指定名稱快取
         from zhongwen.表 import 表示
