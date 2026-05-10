@@ -11,7 +11,7 @@ class Test(unittest.TestCase):
         self.assertIsInstance(df.iloc[0].股票代號, str)
 
     def test查股票代號及簡稱(self):
-        from 股票分析.股票基本資料分析 import 查股票代號, 查股票簡稱, cache
+        from twse_crawler.股票基本資料分析 import 查股票代號, 查股票簡稱, cache
         from zhongwen.快取 import 刪除指定名稱快取
         # 刪除指定名稱快取(cache, '查股票代號')
         cache.clear()
@@ -78,5 +78,5 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     # unittest.main()
     suite = unittest.TestSuite()
-    suite.addTest(Test('test取股票基本資料分析彙總表'))
+    suite.addTest(Test('test查股票代號及簡稱'))
     unittest.TextTestRunner().run(suite)
