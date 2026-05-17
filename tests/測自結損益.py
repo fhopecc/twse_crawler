@@ -51,6 +51,7 @@ class Test(unittest.TestCase):
         預測項目 = ['前年至次年每股盈餘','預測說明']
         r = 預測前年至次年每股盈餘('遠東銀')
         表示(r)
+
         self.assertTrue(False)
         self.assertEqual(len(r), 2)
         for c in 預測項目:
