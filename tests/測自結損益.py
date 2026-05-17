@@ -18,9 +18,9 @@ class Test(unittest.TestCase):
         from 股票分析.自結損益 import 預測前年至次年周期數據
         from 股票分析.營收分析 import 預測前年至次年每股盈餘, 依台積電資本支出預測營收
         from zhongwen.表 import 表示
-        預測結果 = 預測前年至次年每股盈餘('一零四')
+        預測結果 = 預測前年至次年每股盈餘('鈊象')
         表示(預測結果)
-
+        self.assertFalse(True)
         預測結果 = 預測前年至次年周期數據(讀取測例('崑鼎'), '本月合併營業損益', '自結損益月份')
         for c in ['前年至次年各期數據', '預測說明', '趨勢起日', '數據頻率'
                  ,'趨勢方向','趨勢斜率','趨勢說明']:
@@ -46,12 +46,11 @@ class Test(unittest.TestCase):
 
     def test預測前年至次年每股盈餘(self):
         from twse_crawler.自結損益 import 預測前年至次年每股盈餘
-        from zhongwen.表 import 數據不足, 顯示
+        from zhongwen.表 import 數據不足, 表示
 
         預測項目 = ['前年至次年每股盈餘','預測說明']
-
         r = 預測前年至次年每股盈餘('遠東銀')
-        顯示(r)
+        表示(r)
         self.assertTrue(False)
         self.assertEqual(len(r), 2)
         for c in 預測項目:

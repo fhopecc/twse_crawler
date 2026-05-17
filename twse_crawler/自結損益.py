@@ -401,6 +401,7 @@ def 預測前年至次年每股盈餘(股票, 歷月自結損益表=None):
     四、歷月自結損益資料要大於2筆。
     '''
     from twse_crawler.損益表分析 import 取前年至次年各季損益表, cache as acache
+    from twse_crawler.營收分析 import 取預測盈餘說明
     from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from zhongwen.時 import 取正式民國日期
     from zhongwen.表 import 顯示, 數據不足
@@ -455,28 +456,10 @@ def 預測前年至次年每股盈餘(股票, 歷月自結損益表=None):
     前年至次年各季損益['每股盈餘'] = \
         前年至次年各季損益.每股盈餘.fillna(前年至次年各季損益.淨利/股數)
     年度每股盈餘 = 前年至次年各季損益.每股盈餘.resample('YE').sum()
-
     預測說明 += f'，再除以{取正式民國日期(最近損益.name)}損益表推論流通股數'
     預測說明 += f'{取最簡約數(股數)}股，'
-    年度每股盈餘對 = [(d.year, v) for d, v in 年度每股盈餘.items()] 
-    年度 = [f'{t[0]-1911}' for t in 年度每股盈餘對] 
-    每股盈餘 = [f'{t[1]:.2f}' for t in 年度每股盈餘對] 
-
-    from zhongwen.時 import 上季, 取季別名, 一年, 取民國季度
-    from zhongwen.數 import 取增減百分比
-    from zhongwen.表 import 表示
-    import pandas as pd
-    上季日期 = 上季.to_timestamp(how='end').floor('D') 
-    去年同季 = (上季日期 - 一年)
-    上季及同季 = 前年至次年各季損益.query('index in [@上季日期, @去年同季]')
-    去年同季每股盈餘, 上季每股盈餘 = 上季及同季.iloc[0].每股盈餘, 上季及同季.iloc[1].每股盈餘
-    同比 = (上季每股盈餘-去年同季每股盈餘)/去年同季每股盈餘
-    # 表示(上季及同季, 顯示索引=True)
-    if pd.isna(上季及同季.index[1]):
-        預測說明 += f'預測'
-    預測說明 += f'{取民國季度(上季)}每股盈餘為{上季每股盈餘:.2f}元，同比{取增減百分比(同比)}，'
- 
-    預測說明 += f'預測{臚列(年度)}年度每股盈餘分別為{臚列(每股盈餘)}元'
+    前年至次年各季損益['ds'] = 前年至次年各季損益.index
+    預測說明 += 取預測盈餘說明(年度每股盈餘, 前年至次年各季損益) 
     r['前年至次年每股盈餘'] = pd.Series(年度每股盈餘)
     r['預測說明'] = 預測說明 
     return r

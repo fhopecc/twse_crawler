@@ -74,22 +74,25 @@ def 取股利表(股票=None):
     # if 今日.month < 4:
         # df1 = 抓取股利分派情形彙總表(上年度)
     # else:
-    df1 = 抓取股利分派情形彙總表(本年度)
-    df1 = df1[["公司代號", '股利所屬期間',"配息" , "配股", "股利所屬年度"]]
-    df1['股利所屬期間'] = df1.apply(取股利所屬期間, axis=1)
+    try:
+        df1 = 抓取股利分派情形彙總表(本年度)
+        df1 = df1[["公司代號", '股利所屬期間',"配息" , "配股", "股利所屬年度"]]
+        df1['股利所屬期間'] = df1.apply(取股利所屬期間, axis=1)
 
-    df['股利所屬期間表達'] = df.股利所屬期間.map(repr)
-    df1['股利所屬期間表達'] = df1.股利所屬期間.map(repr)
-    df = df.merge(df1, how="outer", on=["公司代號", "股利所屬期間表達"])
+        df['股利所屬期間表達'] = df.股利所屬期間.map(repr)
+        df1['股利所屬期間表達'] = df1.股利所屬期間.map(repr)
+        df = df.merge(df1, how="outer", on=["公司代號", "股利所屬期間表達"])
 
-    df = df.rename(columns=lambda r: r.replace("_x", ""))
-    df['配息'] = df.配息.fillna(df["配息_y"])
-    df['配股'] = df.配股.fillna(df["配股_y"])
-    df['股利所屬期間'] = df.股利所屬期間.fillna(df["股利所屬期間_y"])
-    df['股利所屬年度'] = df.股利所屬年度.fillna(df["股利所屬年度_y"])
-    for c in df.columns:
-        if "_y" in c:
-            del df[c]
+        df = df.rename(columns=lambda r: r.replace("_x", ""))
+        df['配息'] = df.配息.fillna(df["配息_y"])
+        df['配股'] = df.配股.fillna(df["配股_y"])
+        df['股利所屬期間'] = df.股利所屬期間.fillna(df["股利所屬期間_y"])
+        df['股利所屬年度'] = df.股利所屬年度.fillna(df["股利所屬年度_y"])
+        for c in df.columns:
+            if "_y" in c:
+                del df[c]
+    except Exception as e:
+        logger.error(f'取股利表({股票}) 發生{str(e)}')
 
     df['普通股每股面額'] = df.普通股每股面額.map(取數值)
     df = df.drop_duplicates(subset=['公司代號', '股利所屬期間', '配息', '配股'], keep='last')
