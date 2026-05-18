@@ -344,9 +344,9 @@ def 預測至次年度商品價(歷史每日現價, 商品名="鉛", n_trials=15
     # 4. 定義 Optuna 的內部尋優目標函數
     def _objective(trial):
         # 趨勢轉折因子：範圍設在 0.01 ~ 0.5 之間，防止模型偷懶畫直線
-        changepoint_prior_scale = trial.suggest_float("changepoint_prior_scale", 0.01, 1000.0)
+        changepoint_prior_scale = trial.suggest_float("changepoint_prior_scale", 10, 5000.0)
         # 季節性影響因子：控制年規律的強度，採用對數搜尋
-        yearly_prior_scale = trial.suggest_float("yearly_prior_scale", 0.01, 1000.0, log=True)
+        yearly_prior_scale = trial.suggest_float("yearly_prior_scale", 10, 5000.0, log=True)
         
         # 建立純時間序列 Prophet 模型
         model = Prophet(
