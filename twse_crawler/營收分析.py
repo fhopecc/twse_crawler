@@ -111,8 +111,8 @@ def 預測前年至次年每股盈餘(股票, 歷月營收表=None):
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.數 import 取最簡約數
     from zhongwen.文 import 臚列
-    from 股票分析.鉛價分析 import 以鉛價預測前年至次年每股盈餘
-    from 股票分析.鉛價分析 import 毛利受鉛價影響者
+    from twse_crawler.鉛價分析 import 以鉛價預測前年至次年每股盈餘
+    from twse_crawler.鉛價分析 import 毛利受鉛價影響者
     import pandas as pd
     公司代號 = 查股票代號(股票)
     公司簡稱 = 查股票簡稱(股票)

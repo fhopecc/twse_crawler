@@ -5,13 +5,16 @@ class Test(unittest.TestCase):
     def test(self):
         from twse_crawler.鉛價分析 import 以大宗商品價預測至次年底各季財務數據, 取鉛價
         from twse_crawler.鉛價分析 import 以鉛價預測前年至次年每股盈餘
-        from twse_crawler.鉛價分析 import 預測至次年度商品價, 抓取年度鉛價
+        from twse_crawler.鉛價分析 import 預測至次年度商品價
+        from twse_crawler.鉛價分析 import 預測至次年度商品價時
         from zhongwen.表 import 表示
-        import pandas as pd
-        r = 預測至次年度商品價(取鉛價())         
-        表示(r[1])
-        self.assertFalse(True) 
         r = 以鉛價預測前年至次年每股盈餘('泰銘')
+        表示(r)
+        self.assertFalse(True) 
+        r1, r2, r3 = 預測至次年度商品價時(取鉛價())
+        表示(r3)
+        r1, r2, r3 = 預測至次年度商品價(取鉛價())
+        表示(r3)
         r = 抓取年度鉛價()
         r = 預測至次年度商品價(取鉛價())
         表示(r[1])
