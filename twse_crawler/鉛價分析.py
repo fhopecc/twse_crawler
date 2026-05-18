@@ -291,12 +291,17 @@ def 以鉛價預測前年至次年每股盈餘(股票, 歷月營收表=None):
     營收預測結果['預測說明'] = 預測說明 
     return 營收預測結果
 
-def 預測至次年度商品價(歷史日價, 商品名='商品', 嘗試次數=15):
+def 預測至次年度商品價(歷史每日現價, 商品名="鉛", n_trials=15):
     """
-    一、回傳預測日商品價、季商品價。
+    第一階段泛化模型：純時間序列 Prophet 模型（無外部因子）。
+    動態計算並精準預測至【次年底】的每日商品現價或匯率，並打包為季度特徵工程矩陣。
+    
+    優化機制：
+        在 _objective 內部計算 RMSE, R2, MAPE，並透過 trial.set_user_attr 存入 Optuna 紀錄中，
+        後續可直接由 study.best_trial.user_attrs 呼叫獲取。
     """
     # ---------------------------------------------------------
-    # 將所有 import 放到函式內部
+    # 套件完全收納於函式內部導入 (Local Import)
     # ---------------------------------------------------------
     import logging
     import datetime
@@ -304,42 +309,46 @@ def 預測至次年度商品價(歷史日價, 商品名='商品', 嘗試次數=1
     import pandas as pd
     import optuna
     from prophet import Prophet
+    from sklearn.metrics import r2_score, mean_absolute_percentage_error
 
-    # 關閉 Prophet 與 Optuna 惱人的日誌訊息，保持主程式控制台乾淨
+    # 關閉 Prophet 與 Optuna 惱人的日誌訊息
     logging.getLogger("prophet").setLevel(logging.ERROR)
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    df_historical_daily = 歷史日價
-    # 1. 資料格式檢查與標準化轉換
-    if '日期' not in df_historical_daily.columns or '現價' not in df_historical_daily.columns:
-        raise ValueError("輸入的 DataFrame 必須包含日期與現價欄位！")
+
+    # 1. 資料格式與欄位檢查
+    if '日期' not in 歷史每日現價.columns or '現價' not in 歷史每日現價.columns:
+        raise ValueError(f"[{商品名}] 輸入的 DataFrame 必須包含 '日期' 與 '現價' 欄位！")
         
-    df_input = df_historical_daily.rename(columns={"日期": "ds", "現價": "y"})
+    df_input = 歷史每日現價.rename(columns={"日期": "ds", "現價": "y"})
     
-    # 2. 自動計算距離「次年底」還有幾天
+    # 2. 自動動態計算距離「次年底」還有幾天
     last_hist_date = df_input["ds"].max()
-    current_year = datetime.datetime.now().year  # 自動抓取目前年份 (2026年 / 115年)
-    next_year_end = datetime.datetime(current_year + 1, 12, 31)  # 目標次年底 (2027年 / 116年12月31日)
+    current_year = datetime.datetime.now().year  # 自動抓取目前年份（115年/2026年）
+    next_year_end = datetime.datetime(current_year + 1, 12, 31)  # 目標次年底（116年/2027年12月31日）
     
     # 計算需要預測的總天數
     forecast_days = (next_year_end - last_hist_date).days
     
     if forecast_days <= 0:
-        raise ValueError(f"歷史資料的最後一天 ({last_hist_date.strftime('%Y-%m-%d')}) 已經超越或等於次年底！請檢查數據。")
+        raise ValueError(f"[{商品名}] 歷史資料最後一天 ({last_hist_date.strftime('%Y-%m-%d')}) 已經超越或等於次年底！")
         
-    print(f"歷史資料最後一天為: {last_hist_date.strftime('%Y-%m-%d')}")
-    print(f"動態鎖定目標次年底: {next_year_end.strftime('%Y-%m-%d')}")
+    print(f"=== 啟動 [{商品名}] 預測管線 ===")
+    print(f"歷史最後一天: {last_hist_date.strftime('%Y-%m-%d')} | 目標次年底: {next_year_end.strftime('%Y-%m-%d')}")
     print(f"自動計算應預測天數: {forecast_days} 天\n")
 
-    # 3. 劃分訓練集與驗證集 (保留最後 180 天日資料作為模擬考題引導 Optuna)
+    # 3. 劃分訓練集與驗證集 (保留最後 180 天日資料作為模擬考題，用來引導 Optuna 尋優)
     train_len = len(df_input) - 180
     train_df = df_input.iloc[:train_len]
     val_df = df_input.iloc[train_len:]
     
     # 4. 定義 Optuna 的內部尋優目標函數
     def _objective(trial):
-        changepoint_prior_scale = trial.suggest_float("changepoint_prior_scale", 0.005, 0.3, log=True)
-        yearly_prior_scale = trial.suggest_float("yearly_prior_scale", 0.01, 10.0, log=True)
+        # 趨勢轉折因子：範圍設在 0.01 ~ 0.5 之間，防止模型偷懶畫直線
+        changepoint_prior_scale = trial.suggest_float("changepoint_prior_scale", 0.01, 1000.0)
+        # 季節性影響因子：控制年規律的強度，採用對數搜尋
+        yearly_prior_scale = trial.suggest_float("yearly_prior_scale", 0.01, 1000.0, log=True)
         
+        # 建立純時間序列 Prophet 模型
         model = Prophet(
             yearly_seasonality=True,
             weekly_seasonality=False,
@@ -349,20 +358,47 @@ def 預測至次年度商品價(歷史日價, 商品名='商品', 嘗試次數=1
         )
         model.fit(train_df)
         
+        # 預測驗證集
         forecast = model.predict(val_df[['ds']])
-        rmse = np.sqrt(np.mean((val_df['y'].values - forecast['yhat'].values) ** 2))
-        return rmse
+        
+        y_true = val_df['y'].values
+        y_pred = forecast['yhat'].values
+        
+        # 核心計算：三圍指標結算
+        rmse = np.sqrt(np.mean((y_true - y_pred) ** 2))
+        r2 = r2_score(y_true, y_pred)
+        mape = mean_absolute_percentage_error(y_true, y_pred)
+        
+        # ---------------------------------------------------------
+        # 【核心亮點】利用 user_attr 在 trial 紀錄中打包所有指標
+        # ---------------------------------------------------------
+        trial.set_user_attr("rmse", float(rmse))
+        trial.set_user_attr("r2", float(r2))
+        trial.set_user_attr("mape", float(mape))
+        
+        # 鐵血懲罰機制：如果 R2 是負的，回傳極大誤差，逼演算法跳出死胡同
+        return -r2
 
-    # 5. 執行第一階段的超參數尋優
-    print(f"啟動日鉛價模型優化 (預計嘗試 {嘗試次數} 次組合)...")
+    # 5. 執行超參數尋優
+    print(f"正在優化 [{商品名}] 模型參數 (預計嘗試 {n_trials} 次組合)...")
     study = optuna.create_study(direction="minimize")
-    study.optimize(_objective, n_trials=嘗試次數)
+    study.optimize(_objective, n_trials=n_trials)
     
-    print(f"優化完成！最佳參數組合: {study.best_params}")
-    print(f"歷史回測 180 天之最小預測 RMSE 誤差: {study.best_value:.2f} 美元\n")
+    # ---------------------------------------------------------
+    # 【亮點調用】直接從 best_trial 中把當時註冊的 user_attr 叫出來
+    # ---------------------------------------------------------
+    best_attrs = study.best_trial.user_attrs
+    print(f"\n[{商品名}] 優化完成！最佳參數組合: {study.best_params}")
+    print(f"--- [{商品名}] 最佳試驗 (Best Trial) 內部指標動態追蹤 ---")
+    print(f"歷史回測 180 天之最佳 RMSE : {best_attrs['rmse']:.4f}")
+    print(f"歷史回測 180 天之模型解釋力 R2 : {best_attrs['r2']:.4f}")
+    print(f"歷史回測 180 天之平均誤差率 MAPE: {best_attrs['mape'] * 100:.2f}%")
+    if best_attrs['r2'] < 0:
+        print(f"[除錯警訊] 精選出的最佳模型 R2 依然為負值，代表數據可能缺乏時間週期規律。")
+    print("-" * 50 + "\n")
     
-    # 6. 使用 Optuna 篩選出的金牌參數，完整擬合所有歷史資料
-    print("正在使用最佳參數訓練最終日鉛價模型並進行長線推演...")
+    # 6. 使用最佳參數組，完整擬合所有歷史資料（納入最新數據）
+    print(f"正在重訓最終 [{商品名}] 模型並進行長線推演...")
     final_model = Prophet(
         yearly_seasonality=True,
         weekly_seasonality=False,
@@ -378,7 +414,7 @@ def 預測至次年度商品價(歷史日價, 商品名='商品', 嘗試次數=1
     
     # 僅切出純粹的「未來預測區段」
     df_future_all = forecast_all[forecast_all["ds"] > last_hist_date]
-    df_future_daily = df_future_all[["ds", "yhat"]].rename(columns={"yhat": "predicted_lead_price"}).reset_index(drop=True)
+    df_future_daily = df_future_all[["ds", "yhat"]].rename(columns={"yhat": f"predicted_{商品名}_price"}).reset_index(drop=True)
     
     # 8. 高級特徵工程：將預測日報價自動按季度分組打包
     df_future_daily["quarter_end"] = df_future_daily["ds"] + pd.offsets.QuarterEnd(0)
@@ -386,15 +422,15 @@ def 預測至次年度商品價(歷史日價, 商品名='商品', 嘗試次數=1
     df_future_quarterly = (
         df_future_daily.groupby("quarter_end")
         .agg(
-            price_mean=("predicted_lead_price", "mean"),        # 未來各季預估均價
-            price_start=("predicted_lead_price", "first"),      # 未來各季預估期初價
-            price_end=("predicted_lead_price", "last"),        # 未來各季預估期末價
+            price_mean=(f"predicted_{商品名}_price", "mean"),        # 未來各季預估均價
+            price_start=(f"predicted_{商品名}_price", "first"),      # 未來各季預估期初價
+            price_end=(f"predicted_{商品名}_price", "last"),        # 未來各季預估期末價
         )
         .reset_index()
     )
     
-    # 計算未來各季的預估期末跌幅
+    # 計算未來各季的預估期末變動值
     df_future_quarterly["price_drop_effect"] = df_future_quarterly["price_end"] - df_future_quarterly["price_start"]
     
-    print("次年底預測流水線處理完畢。")
+    print(f"[{商品名}] 次年底預測管線處理完畢。\n")
     return df_future_daily, df_future_quarterly

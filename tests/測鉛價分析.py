@@ -8,11 +8,11 @@ class Test(unittest.TestCase):
         from twse_crawler.鉛價分析 import 預測至次年度商品價, 抓取年度鉛價
         from zhongwen.表 import 表示
         import pandas as pd
-        r = 以鉛價預測前年至次年每股盈餘('泰銘')
-        表示(r)
+        r = 預測至次年度商品價(取鉛價())         
+        表示(r[1])
         self.assertFalse(True) 
+        r = 以鉛價預測前年至次年每股盈餘('泰銘')
         r = 抓取年度鉛價()
-        表示(r)
         r = 預測至次年度商品價(取鉛價())
         表示(r[1])
 
