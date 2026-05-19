@@ -468,3 +468,162 @@ def 依台積電資本支出預測營收(股票):
     營收預測結果['預測說明'] = 預測說明
     營收預測結果['前年至次年各季營收'] = 營收預測結果.前年至次年各期數據
     return 營收預測結果
+
+def 預測至次年底月數據(月數據, 試驗數=20):
+    """
+    使用 LightGBM + Optuna 進行滾動式多步預測，一路預測至次年底（2027 年 12 月），
+    並將每次試驗的統計指標記錄於 user_attr。
+    
+    參數:
+    月數據 (pd.DataFrame): 必須包含 ['日期', '營收'] 兩欄，且資料以月為單位。
+    試驗數 (int): Optuna 自動調參的嘗試次數。
+    
+    返回:
+    pd.DataFrame: 包含歷史實際值與至 2027 年 12 月預測值的完整 DataFrame。
+    dict: 本次最佳模型的參數組合。
+    """
+    # 1. 內聚所有的依賴套件，保持模組乾淨
+    import numpy as np
+    import pandas as pd
+    import lightgbm as lgb
+    import optuna
+    from sklearn.metrics import r2_score, mean_absolute_percentage_error
+    
+    # 確保資料依時間排序，並轉換日期格式
+    月數據['日期'] = 月數據['營收月份'].map(lambda m: m.end_time.normalize())
+    月數據['營收'] = 月數據['營業收入-當月營收']
+
+    df_main = 月數據.sort_values("日期").reset_index(drop=True)
+    
+    # 固定預測終點為次年底（2027 年 12 月）
+    target_end_date = pd.to_datetime("2027-12-01")
+    current_latest_date = df_main['日期'].max()
+    
+    if current_latest_date >= target_end_date:
+        print("目前資料時間已包含或超越 2027 年 12 月。")
+        return df_main, {}
+
+    # === 2. 內部特徵工程建構函式 ===
+    def _extract_features(base_df):
+        fe_df = base_df.copy().sort_values("日期").reset_index(drop=True)
+        fe_df['月份'] = fe_df['日期'].dt.month
+        
+        # 滯後特徵 (抓過去短期動能與去年同月基期)
+        for lag in [1, 2, 3, 11, 12, 13]:
+            fe_df[f'營收_lag_{lag}'] = fe_df['營收'].shift(lag)
+            
+        # 滾動財務統計指標
+        fe_df['近三月均營收_ma3'] = fe_df['營收'].shift(1).rolling(window=3).mean()
+        fe_df['近半年均營收_ma6'] = fe_df['營收'].shift(1).rolling(window=6).mean()
+        fe_df['近一年均營收_ma12'] = fe_df['營收'].shift(1).rolling(window=12).mean()
+        
+        # 營收動能代理變數
+        fe_df['營收月變動動能'] = fe_df['營收'].shift(1) - fe_df['營收'].shift(2)
+        fe_df['營收年變動動能'] = fe_df['營收'].shift(1) - fe_df['營收'].shift(13)
+        
+        return fe_df
+
+    # === 3. 靜態模型訓練 (以現有歷史資料尋找最佳參數) ===
+    # 用現有的歷史資料建立特徵矩陣
+    fe_historical = _extract_features(df_main).dropna().reset_index(drop=True)
+    
+    # 劃分訓練與驗證集 (保留最後 12 筆作模擬考)
+    val_size = 12 if len(fe_historical) > 36 else int(len(fe_historical) * 0.2)
+    train_len = len(fe_historical) - val_size
+    
+    train_df = fe_historical.iloc[:train_len]
+    val_df = fe_historical.iloc[train_len:]
+    
+    # 純數值過濾，自動排除非數值欄位，並手動排除目標變數
+    X_train_raw = train_df.select_dtypes(include=[np.number])
+    feature_cols = [col for col in X_train_raw.columns if col != '營收']
+    
+    X_train = train_df[feature_cols]
+    y_train = train_df['營收']
+    X_val = val_df[feature_cols]
+    y_val = val_df['營收']
+    
+    # 歷史紀錄最低營收 (做為物理地板線保護基底)
+    history_min_revenue = df_main['營收'].min()
+    safe_floor = history_min_revenue * 0.90
+
+    # Optuna 自動調參目標函數
+    def _objective(trial):
+        params = {
+            'objective': 'regression',
+            'metric': 'rmse',
+            'verbosity': -1,
+            'n_estimators': trial.suggest_int('n_estimators', 50, 500),
+            'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.15, log=True),
+            # 防禦限制：強力壓制樹深度，防止小樣本過度擬合
+            'max_depth': trial.suggest_int('max_depth', 2, 4),
+            'num_leaves': trial.suggest_int('num_leaves', 4, 15),
+            'min_child_samples': trial.suggest_int('min_child_samples', 2, 15),
+            'subsample': trial.suggest_float('subsample', 0.6, 0.9),
+            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 0.9),
+            'reg_alpha': trial.suggest_float('reg_alpha', 1e-3, 10.0, log=True),
+            'reg_lambda': trial.suggest_float('reg_lambda', 1e-3, 10.0, log=True),
+        }
+        
+        model = lgb.LGBMRegressor(**params)
+        model.fit(X_train, y_train)
+        
+        # 驗證集預測
+        preds = model.predict(X_val)
+        
+        # 計算多維度度量
+        rmse = np.sqrt(np.mean((y_val - preds) ** 2))
+        r2 = r2_score(y_val, preds)
+        mape = mean_absolute_percentage_error(y_val, preds)
+        
+        # 將量測值存入該次 trial 的 user_attr
+        trial.set_user_attr("rmse", float(rmse))
+        trial.set_user_attr("r2", float(r2))
+        trial.set_user_attr("mape", float(mape))
+        
+        return rmse
+
+    # 執行優化
+    study = optuna.create_study(direction='minimize')
+    optuna.logging.set_verbosity(optuna.logging.WARNING) 
+    study.optimize(_objective, n_trials=試驗數)
+    
+    # 用最優參數建構最終模型
+    best_params = study.best_params
+    model_final = lgb.LGBMRegressor(**best_params, verbosity=-1)
+    model_final.fit(fe_historical[feature_cols], fe_historical['營收'])
+
+    # === 4. 滾動預測核心迴圈 (Auto-regressive Loop) ===
+    # 複製一份主資料庫，準備逐步填入預測結果
+    df_rolling = df_main.copy()
+    if '資料類型' not in df_rolling.columns:
+        df_rolling['資料類型'] = '歷史實際值'
+    
+    current_date = current_latest_date
+    while current_date < target_end_date:
+        # 計算下一個月份的日期
+        next_date = current_date + pd.DateOffset(months=1)
+        
+        # 插入一筆只有日期的預測空白列
+        new_row = pd.DataFrame({'日期': [next_date], '營收': [np.nan], '資料類型': ['預測值']})
+        df_rolling = pd.concat([df_rolling, new_row], ignore_index=True)
+        
+        # 重新執行特徵工程，讓最新一列自動計算包含先前預測值在內的特徵
+        df_fe_temp = _extract_features(df_rolling)
+        
+        # 提取最新那一列的預測特徵
+        X_pred_step = df_fe_temp[feature_cols].iloc[[-1]]
+        
+        # 預測該月營收
+        pred_val = model_final.predict(X_pred_step)[0]
+        
+        # 財務安全防禦地板線保護
+        pred_val_clipped = np.clip(pred_val, a_min=safe_floor, a_max=None)
+        
+        # 將結果填回主資料表的最後一列
+        df_rolling.loc[df_rolling.index[-1], '營收'] = float(pred_val_clipped)
+        
+        # 推進時間指標
+        current_date = next_date
+
+    return df_rolling.reset_index(drop=True), best_params
