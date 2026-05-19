@@ -535,7 +535,7 @@ def 預測至次年度商品價(歷史每日現價, 商品名="鉛", n_trials=20
             'n_estimators': trial.suggest_int('n_estimators', 50, 500),
             'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.2, log=True),
             'num_leaves': trial.suggest_int('num_leaves', 15, 127),
-            'max_depth': trial.suggest_int('max_depth', 3, 10),
+            'max_depth': trial.suggest_int('max_depth', 3, 10), # 設深度上限為5，避免過擬合
             'min_child_samples': trial.suggest_int('min_child_samples', 5, 50),
             'subsample': trial.suggest_float('subsample', 0.6, 1.0),
             'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
@@ -569,7 +569,7 @@ def 預測至次年度商品價(歷史每日現價, 商品名="鉛", n_trials=20
     
     best_attrs = study.best_trial.user_attrs
     m = 表達模型最佳試驗結果(study)
-    m += f"之LightBGM模型預測{商品名}價"
+    m += f"、深度為{study.best_params['max_depth']}之LightBGM模型預測{商品名}價"
     print(f"\n[{商品名}] 優化完成！最佳參數組合: {study.best_params}")
     print(f"--- [{商品名}] GBM 最佳試驗 (Best Trial) 內部指標追蹤 ---")
     print(f"歷史回測 180 天之最佳 RMSE : {best_attrs['rmse']:.4f}")

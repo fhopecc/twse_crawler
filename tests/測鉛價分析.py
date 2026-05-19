@@ -8,14 +8,14 @@ class Test(unittest.TestCase):
         from twse_crawler.鉛價分析 import 預測至次年度商品價
         from twse_crawler.鉛價分析 import 預測至次年度商品價時
         from zhongwen.表 import 表示
-        r = 以鉛價預測前年至次年每股盈餘('泰銘')
-        表示(r)
+        r1, r2, r3 = 預測至次年度商品價(取鉛價())
+        表示(r2)
+        表示(r3)
         self.assertFalse(True) 
         r1, r2, r3 = 預測至次年度商品價時(取鉛價())
         表示(r3)
-        r1, r2, r3 = 預測至次年度商品價(取鉛價())
-        表示(r3)
-        r = 抓取年度鉛價()
+        r = 以鉛價預測前年至次年每股盈餘('泰銘')
+        表示(r)
         r = 預測至次年度商品價(取鉛價())
         表示(r[1])
 
