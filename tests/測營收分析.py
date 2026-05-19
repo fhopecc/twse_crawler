@@ -21,7 +21,7 @@ class Test(unittest.TestCase):
         from twse_crawler.營收分析 import 取歷月營收表
         from twse_crawler.股利分析 import 預測股利
         from zhongwen.表 import 表示, 數據不足
-        df, _ = 預測至次年底月數據(取歷月營收表('泰銘'))
+        df, _ = 預測至次年底月數據(取歷月營收表('鈊象'))
         表示(df.tail(100))
         self.assertFalse(True)
         預測項目 = ['前年至次年每股盈餘', '預測說明'

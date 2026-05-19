@@ -469,8 +469,9 @@ def 依台積電資本支出預測營收(股票):
     營收預測結果['前年至次年各季營收'] = 營收預測結果.前年至次年各期數據
     return 營收預測結果
 
-def 預測至次年底月數據(月數據, 試驗數=20):
+def 預測至次年底月數據(月數據, 月份欄位='營收月份', 數據欄位='營業收入-當月營收', 試驗數=20):
     """
+    一、傳回歷史及預測月數據及自動調參試驗結果。
     使用 LightGBM + Optuna 進行滾動式多步預測，一路預測至次年底（2027 年 12 月），
     並將每次試驗的統計指標記錄於 user_attr。
     
@@ -482,25 +483,25 @@ def 預測至次年底月數據(月數據, 試驗數=20):
     pd.DataFrame: 包含歷史實際值與至 2027 年 12 月預測值的完整 DataFrame。
     dict: 本次最佳模型的參數組合。
     """
-    # 1. 內聚所有的依賴套件，保持模組乾淨
     import numpy as np
     import pandas as pd
     import lightgbm as lgb
     import optuna
+    from zhongwen.時 import 次年數
     from sklearn.metrics import r2_score, mean_absolute_percentage_error
     
     # 確保資料依時間排序，並轉換日期格式
-    月數據['日期'] = 月數據['營收月份'].map(lambda m: m.end_time.normalize())
-    月數據['營收'] = 月數據['營業收入-當月營收']
+    月數據['日期'] = 月數據[月份欄位].map(lambda m: m.end_time.normalize())
+    月數據['營收'] = 月數據[數據欄位]
 
     df_main = 月數據.sort_values("日期").reset_index(drop=True)
     
-    # 固定預測終點為次年底（2027 年 12 月）
-    target_end_date = pd.to_datetime("2027-12-01")
+    # 固定預測終點為次年底
+    target_end_date = pd.to_datetime(f"{次年數}-12-01")
     current_latest_date = df_main['日期'].max()
     
     if current_latest_date >= target_end_date:
-        print("目前資料時間已包含或超越 2027 年 12 月。")
+        print(f"目前資料時間已包含或超越{次年數}年12月。")
         return df_main, {}
 
     # === 2. 內部特徵工程建構函式 ===
@@ -626,4 +627,4 @@ def 預測至次年底月數據(月數據, 試驗數=20):
         # 推進時間指標
         current_date = next_date
 
-    return df_rolling.reset_index(drop=True), best_params
+    return df_rolling.reset_index(drop=True), study
