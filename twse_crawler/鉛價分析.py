@@ -25,6 +25,15 @@ def 表達模型最佳試驗結果(試驗結果, 數據單位='%') -> str:
     # m += f"參數組合{試驗結果.best_params}"
     return m
 
+def 表達模型解釋力(rmse, mape, r_score, 單位='%') -> str:
+    if 單位=='%':
+        m  = f'誤差範圍{rmse:,.2%}，'
+    else:
+        m  = f'誤差範圍{rmse:,.2f}{單位}，'
+    m += f'誤差率{mape:,.2f}，'
+    m += f'R方解釋力{r_score:,.2f}'
+    return m
+
 @cache.memoize('抓取年度鉛價')
 @結果批次寫入(鉛價庫, '鉛', '年度數', list(range(2008, 今年數+1)))
 def 抓取年度鉛價(年度數):
@@ -804,3 +813,112 @@ def 以商品價預測至次年底各季財務數據(股票, 商品每日現價,
     }, index=future_exog.index)
     
     return final_results, forecast_final, 參數說明
+
+def 預測至次年度商品價(歷史每日現價, 商品="鉛", 單位='美元'):
+    """
+    一、運用 Theta 方法進行狀態空間分解，自動處理季節性與趨勢，
+        穩健外推至【次年底】的每日商品現價，並打包為季度特徵工程矩陣。
+    二、歷史每日現價: 歷史必須包含日期及現價。
+    三、回傳每日現價預測、每季價格預測及模型解釋力。
+    """
+    import warnings
+    import datetime
+    import numpy as np
+    import pandas as pd
+    from statsmodels.tsa.forecasting.theta import ThetaModel
+    from sklearn.metrics import r2_score, mean_absolute_percentage_error
+
+    warnings.filterwarnings('ignore', category=UserWarning)
+
+    # 1. 資料格式與基本檢查
+    if '日期' not in 歷史每日現價.columns or '現價' not in 歷史每日現價.columns:
+        raise ValueError(f"[{商品}] 輸入的 DataFrame 必須包含 '日期' 與 '現價' 欄位！")
+    
+    # 確保按時間正確排序，並複製一份避免改動原始資料
+    df_clean = 歷史每日現價.copy()
+    df_clean['日期'] = pd.to_datetime(df_clean['日期'])
+    
+    # 2. 強固型時間索引清洗 (防禦 statsmodels 頻率報錯)
+    df_clean = df_clean.groupby('日期')['現價'].last().to_frame()
+    df_clean = df_clean.sort_index()
+    
+    # 強制轉為日頻率並向前填充 (自動補齊週六日、國定假日等市場休市空缺)
+    df_clean = df_clean.asfreq('D', method='ffill')
+    
+    # 明確指定日頻率標籤，這是 statsmodels 的核心命脈
+    if df_clean.index.freq is None:
+        df_clean.index.freq = 'D'
+        
+    # 3. 自動動態計算距離「次年底」還有幾天
+    last_hist_date = df_clean.index.max()
+    current_year = datetime.datetime.now().year
+    next_year_end = datetime.datetime(current_year + 1, 12, 31)
+    forecast_days = (next_year_end - last_hist_date).days
+    
+    if forecast_days <= 0:
+        raise ValueError(f"[{商品}] 歷史資料最後一天 ({last_hist_date.strftime('%Y-%m-%d')}) 已經超越或等於次年底！")
+        
+    print(f"=== 啟動 [{商品}] Theta Model 預測管線 ===")
+    print(f"歷史最後一天: {last_hist_date.strftime('%Y-%m-%d')} | 目標次年底: {next_year_end.strftime('%Y-%m-%d')}")
+    print(f"自動計算應預測天數: {forecast_days} 天\n")
+
+    # 4. 劃分訓練集與驗證集 (保留最後 180 天日資料作為模擬考題)
+    train_series = df_clean['現價'].iloc[:-180]
+    val_series = df_clean['現價'].iloc[-180:]
+
+    # 5. 模擬回測（歷史考題評估）
+    print(f"正在評估 [{商品}] Theta 模型之歷史回測表現...")
+    try:
+        # period=1 代表純粹趨勢與平滑分解，防禦力極高
+        tm_val = ThetaModel(train_series, period=1)
+        res_val = tm_val.fit()
+        y_pred_val = res_val.forecast(180)
+        
+        # 確保預測結果長度與驗證集完全切齊
+        y_pred_values = y_pred_val.values[:len(val_series)]
+        
+        rmse = np.sqrt(np.mean((val_series.values - y_pred_values) ** 2))
+        r2 = r2_score(val_series.values, y_pred_values)
+        mape = mean_absolute_percentage_error(val_series.values, y_pred_values)
+    except Exception as e:
+        print(f"\n[底層錯誤回報] Theta 模型歷史回測擬合失敗！錯誤訊息為: {e}")
+        rmse, r2, mape = 9999.0, -1.0000, 1.0
+
+    # 將完整的三大時序指標打包進歷史驗證描述字串中
+    m = 表達模型解釋力(rmse, mape, r2, 單位)
+    tm_final = ThetaModel(df_clean['現價'], period=1)
+    res_final = tm_final.fit()
+    
+    # 7. 一步到位直接外推
+    future_predictions = res_final.forecast(forecast_days)
+    
+    # 生成未來時間軸
+    future_dates = pd.date_range(start=last_hist_date + pd.Timedelta(days=1), end=next_year_end, freq='D')
+    future_predictions_values = future_predictions.values[:len(future_dates)]
+
+    # 打包未來預測日流水線
+    df_future_daily = pd.DataFrame({
+        "ds": future_dates,
+        f"predicted_{商品}_price": future_predictions_values
+    })
+
+    # 8. 高級特徵工程：將預測日報價自動按季度分組打包
+    df_future_daily["quarter_end"] = df_future_daily["ds"] + pd.offsets.QuarterEnd(0)
+    
+    df_future_quarterly = (
+        df_future_daily.groupby("quarter_end")
+        .agg(
+            price_mean=(f"predicted_{商品}_price", "mean"),        
+            price_start=(f"predicted_{商品}_price", "first"),      
+            price_end=(f"predicted_{商品}_price", "last"),        
+        )
+        .reset_index()
+    )
+    df_future_quarterly["price_drop_effect"] = df_future_quarterly["price_end"] - df_future_quarterly["price_start"]
+    result_series = pd.Series({
+        "每日預測": df_future_daily,
+        "季預測": df_future_quarterly,
+        "模型解釋力": m
+    })
+    
+    return result_series
