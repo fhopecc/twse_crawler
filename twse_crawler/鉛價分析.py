@@ -16,10 +16,14 @@ cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 毛利受鉛價影響者 = ['泰銘']
 
 def 表達模型多步預測力(rmse, mape, 單位='%') -> str:
+    from zhongwen.數 import 最簡約數
     if 單位=='%':
         m  = f'誤差範圍{rmse:,.2%}，'
     else:
-        m  = f'誤差範圍{rmse:,.2f}{單位}，'
+        if rmse > 10**4:
+            m  = f'誤差範圍{最簡約數(rmse)}{單位}，'
+        else:
+            m  = f'誤差範圍{rmse:,.2f}{單位}，'
     m += f'誤差率{mape:,.2f}'
     return m
 

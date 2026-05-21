@@ -12,6 +12,8 @@ class Test(unittest.TestCase):
         from twse_crawler.營收分析 import 取歷月營收表
         from twse_crawler.股利分析 import 預測股利
         from zhongwen.表 import 表示, 數據不足
+        df = 取歷月營收表('鈊象')
+        df['營收'] = df['營業收入-當月營收']
         r = 預測至次年度月數據(取歷月營收表('鈊象'))
         表示(r)
         self.assertFalse(True)
