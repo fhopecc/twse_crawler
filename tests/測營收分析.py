@@ -7,17 +7,10 @@ logger = logging.getLogger(Path(__file__).stem)
 class Test(unittest.TestCase):
 
     def test預測前年至次年每股盈餘(self):
-        from twse_crawler.營收分析 import 預測前年至次年每股盈餘
-        from twse_crawler.營收分析 import 預測至次年度月數據
-        from twse_crawler.營收分析 import 取歷月營收表
-        from twse_crawler.股利分析 import 預測股利
-        from zhongwen.表 import 表示, 數據不足
-        df = 取歷月營收表('鈊象')
-        df['營收'] = df['營業收入-當月營收']
-        r = 預測至次年度月數據(取歷月營收表('鈊象'))
-        # 表示(r['每月數據'])
-        # 表示(r['關鍵同比分析'])
-        表示(r)
+        from twse_crawler.營收分析 import 預測前年至次年營收新
+        from zhongwen.表 import 表示
+        s = 預測前年至次年營收新('泰銘')
+        表示(s.每季營收)
         self.assertFalse(True)
 
     def test預測前年至次年營收(self):
