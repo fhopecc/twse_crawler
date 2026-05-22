@@ -15,16 +15,10 @@ class Test(unittest.TestCase):
         df = 取歷月營收表('鈊象')
         df['營收'] = df['營業收入-當月營收']
         r = 預測至次年度月數據(取歷月營收表('鈊象'))
+        # 表示(r['每月數據'])
+        # 表示(r['關鍵同比分析'])
         表示(r)
         self.assertFalse(True)
-
-        表示(df.tail(100))
-        預測項目 = ['前年至次年每股盈餘', '預測說明'
-                   ,'趨勢起日','數據頻率','趨勢方向','趨勢斜率','趨勢說明'
-                   ]
-        r = 預測前年至次年每股盈餘('泰銘')
-        for c in 預測項目:
-            self.assertIn(c, r.index)
 
     def test預測前年至次年營收(self):
         from twse_crawler.營收分析 import 預測前年至次年營收
