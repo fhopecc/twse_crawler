@@ -806,12 +806,12 @@ def 預測至次年度月數據(歷史月數據, 單位='元', 月份='營收月
     
     # ====================================================================================
     from zhongwen.時 import 取民國月份
-    from zhongwen.數 import 取增減百分比
-
+    from zhongwen.數 import 取增減百分比, 取數值
+    
     m1 = f"{取民國月份(df_yoy_analysis.iloc[0].對應月份)}{數據}同比"
-    m1+= f"{取增減百分比(df_yoy_analysis.iloc[0].同比)}"
+    m1+= f"{取增減百分比(取數值(df_yoy_analysis.iloc[0].同比))}"
     m2 = f"次月{數據}預測同比"
-    m2+= f"{取增減百分比(df_yoy_analysis.iloc[0].同比)}"
+    m2+= f"{取增減百分比(取數值(df_yoy_analysis.iloc[0].同比))}"
     m = f"{m1}，以{m}，其中{m2}"
     result_series = pd.Series({
         "每月數據": df_future_monthly,
