@@ -79,9 +79,8 @@ def 以鉛價預測前年至次年每股盈餘(股票, 歷月營收表=None):
     import pandas as pd
     公司代號 = 查股票代號(股票)
     公司簡稱 = 查股票簡稱(股票)
-    營收預測結果 = 預測前年至次年營收新(股票)
-    預測說明 = 營收預測結果.預測說明
     歷季損益表 = 取損益表(公司代號)
+    歷季損益表['營收'] = 歷季損益表.營收.fillna(0)
     try:
         最近損益 = 歷季損益表.iloc[-1]
     except IndexError as e:
@@ -92,23 +91,21 @@ def 以鉛價預測前年至次年每股盈餘(股票, 歷月營收表=None):
         logger.error(公司代號)
         raise Exception(f"{公司代號}{errmsg}")
 
-    前年數 = 今年數-1
-    次年數 = 今年數+1
-    前年至次年末 = pd.date_range(f'{前年數}0131', f'{次年數}1231', freq='QE')
     try:
         歷季損益表['index'] = 歷季損益表.財報日期
         歷季損益表 = 歷季損益表.set_index('index')
     except AttributeError:
         歷季損益表['財報日期'] = 歷季損益表.index
 
-    前年至次年各季營收 = 營收預測結果.每季營收
-    前年至次年各季營收 = 前年至次年各季營收.set_index('quarter_end').reindex(index=前年至次年末)
-    前年至次年各季營收 = 前年至次年各季營收.營收
+    from zhongwen.時 import 前年至次年各季末
+    前年至次年各季數據 = 歷季損益表.reindex(index=前年至次年各季末)
 
-    歷季損益表['營收'] = 歷季損益表.營收.fillna(0)
-    前年至次年各季數據 = 歷季損益表.reindex(index=前年至次年末)
+    營收預測結果 = 預測前年至次年營收新(股票)
+    預測說明 = 營收預測結果.預測說明
+
+    前年至次年各季營收 = 營收預測結果.預測前年至次年各季營收
+
     前年至次年各季數據['營收'] = 前年至次年各季數據.營收.fillna(前年至次年各季營收)
-    # 歷季損益表['營收'] = 歷季損益表.營收.fillna(前年至次年各季營收).fillna(0)
 
     q = 取股票基本資料彙總表(股票)
     股數 = q.股數.iloc[-1]
@@ -118,13 +115,13 @@ def 以鉛價預測前年至次年每股盈餘(股票, 歷月營收表=None):
         股數說明 = f'，再除以{取正式民國日期(最近損益.財報日期)}損益表推論流通股數'
         股數說明 += f'{取最簡約數(股數)}股，'
 
-    r = 以商品價預測至次年底各季財務數據(公司代號, 取鉛價())
-    預測毛利率 = r.每季預測值
-    參數說明 = r.模型預測力
-    預測毛利率['index'] = 預測毛利率.ds
-    預測毛利率 = 預測毛利率.set_index('index').reindex(index=前年至次年末)
-    前年至次年各季數據['毛利率'] = 前年至次年各季數據.毛利率.fillna(預測毛利率.yhat)
+    r = 以鉛價預測前年至次年底毛利率(公司代號)
+    預測毛利率 = r.預測前年至次年底各季毛利率
+    預測說明 += r.預測說明
+    前年至次年各季數據['毛利率'] = 前年至次年各季數據.毛利率.fillna(預測毛利率)
     前年至次年各季數據['毛利'] = 前年至次年各季數據.毛利.fillna(前年至次年各季數據.營收 * 前年至次年各季數據.毛利率)
+    表示(前年至次年各季數據)
+    return 
     營利趨勢評分結果 = 預測前年至次年周期數據(歷季損益表, '營利', '財報期別', 取樣頻率='QE'
         ,輔助數據欄名='毛利'
         ,預測前年至次年輔助數據=前年至次年各季數據
@@ -165,180 +162,6 @@ def 以鉛價預測前年至次年每股盈餘(股票, 歷月營收表=None):
     營收預測結果['前年至次年每股盈餘'] = pd.Series(年度每股盈餘)
     營收預測結果['預測說明'] = 預測說明 
     return 營收預測結果
-
-def 以商品價預測至次年底各季財務數據O(股票, 商品每日現價, 日期='財報日期'
-                                    ,數據='毛利率', 單位='%'
-                                    ,商品='鉛', 商品單位='美元'
-                                    ):
-    '''
-    一、商品每日現價必須包含日期及現價欄位。
-    二、傳回每季預測值及模型預測力。
-    '''
-    from twse_crawler.財報分析 import 取財報彙總表
-    from sklearn.metrics import r2_score, mean_absolute_percentage_error
-    import logging
-    import numpy as np
-    import pandas as pd
-    import optuna
-    import statsmodels.api as sm
-
-    # 徹底關閉 Optuna 的日誌，保持畫面乾淨
-    optuna.logging.set_verbosity(optuna.logging.WARNING)
-
-    df_daily_lead = 商品每日現價.copy()
-    _, future_dates, m = 預測至次年度商品價(df_daily_lead, 商品, 商品單位)
-
-    df = 取財報彙總表(股票) 
-    df_quarterly_margin = pd.DataFrame({"ds": df[日期], "margin": df[數據]})
-    
-    # 確保型態正確
-    df_daily_lead["日期"] = pd.to_datetime(df_daily_lead["日期"])
-    df_quarterly_margin["ds"] = pd.to_datetime(df_quarterly_margin["ds"])
-    
-    # ==========================================
-    # 1. Pandas 特徵工程：將日資料轉化為「季特徵」
-    # ==========================================
-    df_daily_lead["quarter_end"] = df_daily_lead["日期"] + pd.offsets.QuarterEnd(0)
-    
-    df_quarterly_features = (
-        df_daily_lead.groupby("quarter_end")
-        .agg(
-            price_mean=("現價", "mean"),
-            price_start=("現價", "first"),
-            price_end=("現價", "last"),
-        )
-        .reset_index()
-    )
-    
-    df_quarterly_features["price_drop_effect"] = (
-        df_quarterly_features["price_end"] - df_quarterly_features["price_start"]
-    )
-    
-    # 資料合併與對齊
-    df_train = pd.merge(
-        df_quarterly_margin,
-        df_quarterly_features,
-        left_on="ds",
-        right_on="quarter_end",
-        how="inner",
-    )
-    
-    # 將時間轉換為標準季度索引，確保 statsmodels 能識別頻率
-    df_train = df_train.sort_values("ds")
-    df_train.index = pd.DatetimeIndex(df_train["ds"]).to_period('Q')
-    
-    # 定義應變數 y 與外生變數 exog 矩陣
-    y_series = df_train["margin"].astype(float)
-    exog_df = df_train[["price_mean", "price_drop_effect"]].astype(float)
-    
-    # 劃分訓練集與驗證集 (保留最後1年，即4個季度作為模擬考)
-    train_len = len(df_train) - 4
-    train_y = y_series.iloc[:train_len]
-    train_exog = exog_df.iloc[:train_len]
-    
-    val_y = y_series.iloc[train_len:]
-    val_exog = exog_df.iloc[train_len:]
-    
-    # ==========================================
-    # 2. 定義 Optuna 的目標尋優函數 (針對 SARIMAX)
-    # ==========================================
-    def objective(trial):
-        # 尋找非季節性超參數 (p, d, q)
-        p = trial.suggest_int('p', 0, 2)
-        d = trial.suggest_int('d', 0, 1)  # 財務比率通常 0 或 1 階差分即可
-        q = trial.suggest_int('q', 0, 2)
-        
-        # 尋找季節性超參數 (P, D, Q)，季度週期固定為 4
-        P = trial.suggest_int('P', 0, 1)
-        D = trial.suggest_int('D', 0, 1)
-        Q = trial.suggest_int('Q', 0, 1)
-        
-        try:
-            model = sm.tsa.statespace.SARIMAX(
-                train_y,
-                exog=train_exog,
-                order=(p, d, q),
-                seasonal_order=(P, D, Q, 4),
-                enforce_stationarity=False,
-                enforce_invertibility=False
-            )
-            results = model.fit(disp=False)
-            
-            # 對驗證集進行外推預測 (模擬考)
-            forecast = results.forecast(steps=len(val_y), exog=val_exog)
-            
-            # 計算驗證指標
-            rmse = np.sqrt(np.mean((val_y.values - forecast.values) ** 2))
-            r2 = r2_score(val_y.values, forecast.values)
-            mape = mean_absolute_percentage_error(val_y.values, forecast.values)
-            
-            trial.set_user_attr("rmse", float(rmse))
-            trial.set_user_attr("r2", float(r2))
-            trial.set_user_attr("mape", float(mape))
-            return rmse
-            
-        except:
-            # 遭遇特定無法收斂的矩陣參數時，回傳極大值懲罰
-            return float('inf')
-
-    # ==========================================
-    # 3. 執行 Optuna 自動超參數優化
-    # ==========================================
-    print("開始啟動 Optuna 貝氏優化調參（SARIMAX模式）...")
-    study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=30)  # SARIMAX 參數空間小，30次即可收斂
-
-    # ==========================================
-    # 4. 使用最佳參數重新訓練完整 100% 的資料
-    # ==========================================
-    bp = study.best_params
-    btua = study.best_trial.user_attrs
-    
-    final_model = sm.tsa.statespace.SARIMAX(
-        y_series,
-        exog=exog_df,
-        order=(bp['p'], bp['d'], bp['q']),
-        seasonal_order=(bp['P'], bp['D'], bp['Q'], 4),
-        enforce_stationarity=False,
-        enforce_invertibility=False
-    )
-    final_results = final_model.fit(disp=False)
-     
-    # 串接您的自訂說明格式
-    參數說明 = f'依{m}，運用' 
-    參數說明 += 表達模型多步預測力(btua['rmse'], btua['mape'], 單位)
-    參數說明 += f'，最佳階數(p,d,q)=({bp["p"]},{bp["d"]},{bp["q"]})' 
-    參數說明 += f'，季節階數(P,D,Q)_4=({bp["P"]},{bp["D"]},{bp["Q"]})' 
-    參數說明 += f'之SARIMAX模型預測{數據}' 
-
-    # ==========================================
-    # 5. 處理未來預測區間的外生變數與對齊
-    # ==========================================
-    # 調整未來時間軸的欄位名稱以符合您的原腳本邏輯
-    future_dates = future_dates.rename(columns={'quarter_end': 'ds'})
-    future_dates = future_dates.sort_values("ds")
-    future_dates.index = pd.DatetimeIndex(future_dates["ds"]).to_period('Q')
-    
-    # 擷取預測區間所需的未來商品外生變數
-    # 排除與歷史重疊的部分，只留下未來的季度
-    train_end_period = y_series.index[-1]
-    future_exog = future_dates.loc[future_dates.index > train_end_period][["price_mean", "price_drop_effect"]].astype(float)
-    
-    # 執行外推預測
-    steps = len(future_exog)
-    forecast_final_values = final_results.forecast(steps=steps, exog=future_exog)
-    
-    # 將預測結果整合回與原 Prophet 類似的 DataFrame 格式（保留 ds 與 yhat）
-    forecast_final = pd.DataFrame({
-        "ds": future_exog.index.to_timestamp(),
-        "yhat": forecast_final_values.values
-    }, index=future_exog.index)
-
-    result_series = pd.Series({
-        "每季預測值": forecast_final,
-        "模型預測力": 參數說明
-    })
-    return result_series
 
 def 預測至次年度商品價(歷史每日現價, 商品="鉛", 單位='美元'):
     """
@@ -624,7 +447,186 @@ def 以商品價預測至次年底各季財務數據(股票, 商品每日現價,
 
     result_series = pd.Series({
         "每季預測值": forecast_final,
-        "模型預測力": 參數說明
+        "預測說明": 參數說明
     })
     return result_series
 
+def 以鉛價預測次年底毛利率(股票):
+    '''
+    一、回傳預測前年至次年底各季毛利率、預測說明
+    '''
+    import pandas as pd
+    from zhongwen.時 import 前年至次年各季末
+    r = 以商品價預測至次年底各季財務數據(股票, 取鉛價())
+    預測毛利率 = r.每季預測值
+    預測毛利率['index'] = 預測毛利率.ds
+    預測毛利率 = 預測毛利率.set_index('index').reindex(index=前年至次年各季末).yhat
+    result = pd.Series({
+         "預測前年至次年底各季毛利率":預測毛利率
+        ,"預測說明":r.預測說明
+        })
+    return result
+
+def 以輔助季數據預測至次年底各季數據(股票
+                                    ,日期='財報日期'
+                                    ,數據='營利'
+                                    ,單位='元'
+                                    ,輔助數據='毛利'
+                                    ,輔助數據預測值=None
+                                    ,輔助數據單位='元'
+                                    ):
+    '''
+    一、須指定股票及輔助數據。
+    二、傳回前年至次年度各季預測值、每季預測值及預測說明。
+    '''
+    from twse_crawler.財報分析 import 取財報彙總表
+    from sklearn.metrics import r2_score, mean_absolute_percentage_error
+    import logging
+    import numpy as np
+    import pandas as pd
+    import optuna
+    import statsmodels.api as sm
+
+    # 徹底關閉 Optuna 的日誌，保持畫面乾淨
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    df = 取財報彙總表(股票) 
+    # 確保日期型態正確
+    df[日期] = pd.to_datetime(df[日期])
+
+    # 數據
+    df_quarterly_margin = pd.DataFrame({"ds": df[日期], "margin": df[數據]})
+    # 輔助季數據
+    df_quarterly_features = pd.DataFrame({"quarter_end": df[日期], "others": df[輔助數據]})
+    
+    # 資料合併與對齊
+    df_train = pd.merge(
+        df_quarterly_margin,
+        df_quarterly_features,
+        left_on="ds",
+        right_on="quarter_end",
+        how="inner",
+    )
+    from zhongwen.表 import 表示
+    表示(df_train)    
+    # 將時間轉換為標準季度索引，確保 statsmodels 能識別頻率
+    df_train = df_train.sort_values("ds")
+    df_train.index = pd.DatetimeIndex(df_train["ds"]).to_period('Q')
+    
+    # 定義應變數 y 與外生變數 exog 矩陣
+    y_series = df_train["margin"].astype(float)
+    exog_df = df_train[["others"]].astype(float)
+    
+    # 劃分訓練集與驗證集 (保留最後1年，即4個季度作為模擬考)
+    train_len = len(df_train) - 4
+    train_y = y_series.iloc[:train_len]
+    train_exog = exog_df.iloc[:train_len]
+    
+    val_y = y_series.iloc[train_len:]
+    val_exog = exog_df.iloc[train_len:]
+    
+    # ==========================================
+    # 2. 定義 Optuna 的目標尋優函數 (針對 SARIMAX)
+    # ==========================================
+    def objective(trial):
+        p = trial.suggest_int('p', 0, 2)
+        d = trial.suggest_int('d', 0, 1)  
+        q = trial.suggest_int('q', 0, 2)
+        
+        P = trial.suggest_int('P', 0, 1)
+        D = trial.suggest_int('D', 0, 1)
+        Q = trial.suggest_int('Q', 0, 1)
+        
+        try:
+            model = sm.tsa.statespace.SARIMAX(
+                train_y,
+                exog=train_exog,
+                order=(p, d, q),
+                seasonal_order=(P, D, Q, 4),
+                enforce_stationarity=False,
+                enforce_invertibility=False
+            )
+            results = model.fit(disp=False)
+            
+            forecast = results.forecast(steps=len(val_y), exog=val_exog)
+            
+            rmse = np.sqrt(np.mean((val_y.values - forecast.values) ** 2))
+            r2 = r2_score(val_y.values, forecast.values)
+            mape = mean_absolute_percentage_error(val_y.values, forecast.values)
+            
+            trial.set_user_attr("rmse", float(rmse))
+            trial.set_user_attr("r2", float(r2))
+            trial.set_user_attr("mape", float(mape))
+            return rmse
+            
+        except:
+            return float('inf')
+
+    # ==========================================
+    # 3. 執行 Optuna 自動超參數優化
+    # ==========================================
+    print("開始啟動 Optuna 貝氏優化調參（SARIMAX模式）...")
+    study = optuna.create_study(direction="minimize")
+    study.optimize(objective, n_trials=30)  
+
+    # ==========================================
+    # 4. 使用最佳參數重新訓練完整 100% 的資料
+    # ==========================================
+    bp = study.best_params
+    btua = study.best_trial.user_attrs
+    
+    final_model = sm.tsa.statespace.SARIMAX(
+        y_series,
+        exog=exog_df,
+        order=(bp['p'], bp['d'], bp['q']),
+        seasonal_order=(bp['P'], bp['D'], bp['Q'], 4),
+        enforce_stationarity=False,
+        enforce_invertibility=False
+    )
+    final_results = final_model.fit(disp=False)
+     
+    # 串接您的自訂說明格式
+    # 註：請確保「表達模型多步預測力」函數已在外部定義
+    參數說明 = f'依{輔助數據}，運用' 
+    參數說明 += 表達模型多步預測力(btua['rmse'], btua['mape'], 單位)
+    參數說明 += f'，最佳階數(p,d,q)=({bp["p"]},{bp["d"]},{bp["q"]})' 
+    參數說明 += f'，季節階數(P,D,Q)_4=({bp["P"]},{bp["D"]},{bp["Q"]})' 
+    參數說明 += f'之SARIMAX模型預測{數據}' 
+
+    # ==========================================
+    # 5. 處理未來預測區間的外生變數與對齊（已修正）
+    # ==========================================
+    # 傳入的預測值可能是 Series 或 DataFrame，先確保它是 DataFrame 格式
+    if isinstance(輔助數據預測值, pd.Series):
+        future_dates = pd.DataFrame({"others": 輔助數據預測值})
+    else:
+        future_dates = pd.DataFrame({"others": 輔助數據預測值["others"] if "others" in 輔助數據預測值.columns else 輔助數據預測值.iloc[:, 0]})
+    
+    # 【關鍵修正】：強制將未來資料的 Index 轉為 PeriodIndex('Q')，才能跟歷史邊界安全比較
+    if not isinstance(future_dates.index, pd.PeriodIndex):
+        future_dates.index = pd.DatetimeIndex(future_dates.index).to_period('Q')
+    
+    # 排除與歷史重疊的部分，只留下未來的季度
+    train_end_period = y_series.index[-1]
+    future_exog = future_dates.loc[future_dates.index > train_end_period][["others"]].astype(float)
+    
+    # 執行外推預測
+    steps = len(future_exog)
+    if steps == 0:
+        raise ValueError(f"沒有找到晚於歷史最後一季 ({train_end_period}) 的未來輔助數據預測值，請檢查輸入。")
+        
+    forecast_final_values = final_results.forecast(steps=steps, exog=future_exog)
+    
+    # 使用 how='end' 將 PeriodIndex 轉為當季的最後一天（如 2026-06-30）並去除時分秒
+    future_end_dates = future_exog.index.to_timestamp(how='end').normalize().date
+    
+    # 將預測結果整合回與原 Prophet 類似的 DataFrame 格式
+    forecast_final = pd.DataFrame({
+        "ds": future_end_dates,
+        "yhat": forecast_final_values.values
+    }, index=future_exog.index)
+
+    result_series = pd.Series({
+        "每季預測值": forecast_final,
+        "預測說明": 參數說明
+    })
+    return result_series

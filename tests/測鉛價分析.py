@@ -5,15 +5,19 @@ class Test(unittest.TestCase):
     def test(self):
         from twse_crawler.鉛價分析 import 取鉛價
         from twse_crawler.鉛價分析 import 以鉛價預測前年至次年每股盈餘
+        from twse_crawler.鉛價分析 import 以鉛價預測次年底毛利率
         from twse_crawler.鉛價分析 import 預測至次年度商品價
         from twse_crawler.鉛價分析 import 以商品價預測至次年底各季財務數據
         from twse_crawler.鉛價分析 import 抓取年度鉛價
+        from twse_crawler.鉛價分析 import 以輔助季數據預測至次年底各季數據
+        from twse_crawler.財報分析 import 取財報彙總表
         from zhongwen.表 import 表示
         from zhongwen.時 import 今年數
-
-        # r = 以商品價預測至次年底各季財務數據('泰銘', 取鉛價())
-        r = 以鉛價預測前年至次年每股盈餘('泰銘')
-        表示(r)
+        股票 = '泰銘'
+        h = 取財報彙總表(股票)
+        m = 以鉛價預測次年底毛利率(股票)
+        r = 以輔助季數據預測至次年底各季數據(股票,輔助數據預測值=m.預測前年至次年底各季毛利率)
+        表示(r.每季預測值)
         self.assertFalse(True) 
 
 if __name__ == '__main__':
