@@ -11,12 +11,12 @@ cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 匯率庫 = Path.home() / '.twse_crawler' / '資料庫' / '匯率庫'
 
-
 @結果批次寫入(匯率庫, '美元兌新台幣匯率', '年度數', list(range(2008, 今年數+1)))
 def 抓取年度美元兌新台幣匯率(年度數):
     '''
     一、批號為年度數。
-    二、資料來源：yahoo
+    二、欄位：匯率、交易日。
+    三、資料來源：yahoo
     '''
     from datetime import datetime, timedelta
     from zhongwen.時 import 今日
@@ -24,7 +24,7 @@ def 抓取年度美元兌新台幣匯率(年度數):
     import pandas as pd
     logger.info(f"從 Yahoo Finance 抓取{年度數}年美元兌台幣匯率！")
     data = yf.download('USDTWD=X', start=datetime(年度數,1,1)
-                      , end=datetime(年度數,12,31)
+                      ,end=datetime(年度數,12,31)
                       ,interval='1d')
     if not data.empty:
         df = data[['Close']]
@@ -32,9 +32,55 @@ def 抓取年度美元兌新台幣匯率(年度數):
         df.index.name = '交易日'
         df = df.reset_index()
         df = df.sort_index()
+        df['年度數'] = 年度數
         return df
     else:
         raise Exception(f"未能從 Yahoo Finance 獲取{年度數}年美元兌台幣匯率！")
+
+@cache.memoize('取美元匯率', expire=24*60*60)
+def 取美元匯率():
+    '''
+    一、索引為 pd.DatetimeIndex。
+    二、欄位：匯率、交易日。
+    三、每日更新。
+    '''
+    from zhongwen.庫 import 批次載入
+    from zhongwen.時 import 昨日
+    df = 批次載入(匯率庫, '美元兌新台幣匯率', '年度數', 時間欄位='交易日', 起始批號=2008).sort_values('交易日')
+    df = df.set_index('交易日')
+    最近日期 = df.index.max()
+    if 最近日期 < 昨日:
+        抓取年度美元兌新台幣匯率(昨日.year)
+        df = 批次載入(匯率庫, '美元兌新台幣匯率', '年度數', 時間欄位='交易日', 起始批號=2008).sort_values('交易日')
+        df = df.set_index('交易日')
+    return df.sort_index()
+
+@cache.memoize('預測次年底美元匯率', expire=24*60*60)
+def 預測次年底美元匯率():
+    '''
+    一、傳回預估值、預估季均值、rmse、mape、模型名稱。
+    二、預估季均值：歷史與次年度各季之季均值、季起日值、季迄日值、季增減數。
+    '''
+    from twse_crawler.預估次年底 import 預估次年底值
+    return 預估次年底值(取美元匯率().匯率)
+
+@cache.memoize('以匯率預測次年底業外損益', expire=24*60*60)
+def 以匯率預測次年底業外損益(股票):
+    """
+    一、傳回預估各季值、模型準確度說明
+    二、預估各季值為歷史加各季預估值。
+    """
+    from twse_crawler.預估次年底 import 依外部季數據預估次年底數值
+    from twse_crawler.預估次年底 import 表達預測準確度
+    from twse_crawler.財報分析 import 取財報彙總表
+    from zhongwen.表 import 表示
+    預估季均匯率結果 = 預測次年底美元匯率()
+    預估季均匯率 = 預估季均匯率結果.預估季均值[['季均值', '季增減數']]
+    表示(預估季均匯率結果 )
+    df = 取財報彙總表(股票).set_index('財報日期').to_period('Q')
+    r = 依外部季數據預估次年底數值(df.業外損益, 預估季均匯率, 單位="元")
+    r['模型準確度說明'] = f'輸入{表達預測準確度(預估季均匯率結果, "元")}之匯率，運用{r.模型準確度說明}'
+    return r
 
 @functools.cache
 @通知執行時間
@@ -49,7 +95,7 @@ def 下載美元兌新台幣十年匯率():
     end_date = 今日.to_pydatetime()
     start_date = end_date - timedelta(days=10 * 365)
 
-    data = yf.download( 'USDTWD=X', start=start_date, end=end_date, interval='1d')
+    data = yf.download('USDTWD=X', start=start_date, end=end_date, interval='1d')
 
     if not data.empty:
         # 通常我們關心 'Close' 價格作為每日匯率

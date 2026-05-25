@@ -13,105 +13,6 @@ def 表達模型精準度(rmse, mape, 單位='%') -> str:
 def 表達預測準確度(預測結果, 單位='%') -> str:
     return 表達模型精準度(預測結果.rmse, 預測結果.mape, 單位)
 
-def 預估次年底價格(歷日價: "pd.Series", 預估目標 = '鉛價', 單位 = '美元'):
-    """
-    一、歷日價索引須是 DatetimeIndex。
-    二、傳回預估價、預估季價、模型準確度說明。
-    三、預估季價為歷史加次年度各季預估值。
-    """
-    # 1. 於函式內部進行套件導入
-    import warnings
-    import numpy as np
-    import pandas as pd
-    from sklearn.metrics import mean_squared_error
-    from statsmodels.tsa.forecasting.theta import ThetaModel
-
-    warnings.filterwarnings("ignore")
-
-    # 2. 檢查與常規化時間序列
-    if not isinstance(歷日價.index, pd.DatetimeIndex):
-        raise ValueError(f"歷日價索引必須為 DatetimeIndex，實際提供資料索引為{type(歷日價.index)}")
-
-    # 🛡️ 型態防禦：強制轉換為 float 浮點數
-    歷日價 = 歷日價.asfreq("B").ffill().astype(float)
-
-    # 3. 建立「歷史滾動回測」框架 (保留最近 1 年回測)
-    回測天數 = 260
-    if len(歷日價) <= 回測天數 + 50:
-        raise ValueError("歷日價資料太少，無法回測！")
-
-    真實歷史值 = 歷日價.iloc[-回測天數:]
-    回測值 = []
-
-    # 回測驗證
-    for i in range(回測天數):
-        回測訓練集 = 歷日價.iloc[: -回測天數 + i]
-        回測模型 = ThetaModel(回測訓練集, period=260, method="auto").fit()
-        單日預測 =回測模型.forecast(steps=1)
-        回測值.append(單日預測.values[0])
-
-    回測值 = np.array(回測值)
-
-    # 4. 計算回測指標
-    rmse = np.sqrt(mean_squared_error(真實歷史值, 回測值))
-    mape = np.mean(np.abs((真實歷史值 - 回測值) / 真實歷史值))
-
-    # 5. 呼叫您的自訂函式表達模型精準度
-    模型準確度說明 = 表達模型精準度(rmse, mape, 單位)
-
-    # 6. 自動動態識別時間參數
-    最近日期 = 歷日價.index[-1]
-    今年數 = 最近日期.year
-    次年數 = 今年數 + 1
-    次年底 = pd.Timestamp(f"{次年數}-12-31")
-
-    未來時軸 = pd.date_range(
-        start=最近日期 + pd.offsets.BDay(1), end=次年底, freq="B"
-    )
-    預測日數 = len(未來時軸)
-
-    # 7. 以全部歷史資料建立最終預測模型並外推
-    預測模型 = ThetaModel(歷日價, period=260, method="auto").fit()
-    預估價_陣列 = 預測模型.forecast(steps=預測日數)
-    
-    # 轉回帶有未來時軸的 Series
-    預估價 = pd.Series(預估價_陣列.values, index=未來時軸, name="預估價")
-
-    # =====================================================================
-    # 📈 將歷日價與預估價結合，求出「預估季價」
-    # =====================================================================
-    # 將歷史與未來日價拼接
-    全時軸日價 = pd.concat([歷日價, 預估價])
-
-    # 🎯 核心修正：因應新版 Pandas 規範，將 'Q' 改為 'QE' (Quarter End)
-    季聚合 = 全時軸日價.resample('QE')
-
-    # 計算各季度指標
-    季均價 = 季聚合.mean()
-    季起日價 = 季聚合.first()
-    季迄日價 = 季聚合.last()
-    季起迄價差 = 季迄日價 - 季起日價
-
-    # 封裝成 DataFrame
-    預估季價 = pd.DataFrame({
-        "季均價": 季均價,
-        "季起日價": 季起日價,
-        "季迄日價": 季迄日價,
-        "季起迄價差": 季起迄價差
-    })
-
-    # 將轉換後的 DatetimeIndex 轉為季度區間表達的 PeriodIndex
-    預估季價.index = 預估季價.index.to_period('Q')
-
-    # 8. 封裝最終預測結果
-    預測結果 = pd.Series({
-        "預估價": 預估價,
-        "預估季價": 預估季價,
-        "模型準確度說明": 模型準確度說明
-    })
-    
-    return 預測結果
-
 def 依外部季數據預估次年底數值(
     歷季值: "pd.Series",
     外部季數據表: "pd.DataFrame",
@@ -120,8 +21,8 @@ def 依外部季數據預估次年底數值(
 ) -> "pd.Series":
     """
     一、歷季值之索引與外部季數據表之索引皆須為 pd.PeriodIndex(freq='Q')。
-    二、傳回預估季值、模型準確度說明
-    二、預估季值為歷史加各季預估值。
+    二、傳回預估各季值、模型準確度說明
+    二、預估各季值為歷史加各季預估值。
     """
     # 1. 於函式內部進行套件導入
     import warnings
@@ -275,7 +176,7 @@ def 依外部季數據預估次年底數值(
     
     # 11. 傳回結果 Series
     預測結果 = pd.Series({
-        "預估季值": 預估目標全序列,
+        "預估各季值": 預估目標全序列,
         "模型準確度說明": 模型準確度說明
     })
     return 預測結果
@@ -618,4 +519,120 @@ def 預估至次年底每月值(
         "mape": mape_值,
         "模型名稱": f"ThetaModel (Window: {最佳視窗}, Method: {最佳模式})"
     })
+    return 預測結果
+
+def 預估次年底值(歷日值: "pd.Series", 預估目標 = '鉛價', 單位 = '美元'):
+    """
+    一、歷日值索引須是 DatetimeIndex。
+    二、傳回預估值、預估季均值、rmse、mape、模型名稱。
+    三、預估季均值為 DataFrame，包含歷史與次年度各季之：季均值、季起日值、季迄日值、季增減數。
+    """
+    # 1. 於函式內部進行套件導入
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.metrics import mean_squared_error
+    from statsmodels.tsa.forecasting.theta import ThetaModel
+
+    warnings.filterwarnings("ignore")
+
+    # 2. 檢查與常規化時間序列
+    if not isinstance(歷日值.index, pd.DatetimeIndex):
+        raise ValueError(f"歷日值索引必須為 DatetimeIndex，實際提供資料索引為 {type(歷日值.index)}")
+
+    # 🛡️ 型態防禦：強制轉換為 float 浮點數，並補齊工作日
+    歷日值 = 歷日值.asfreq("B").ffill().astype(float)
+
+    # 3. 建立「歷史滾動回測」框架 (保留最近 1 年回測)
+    回測天數 = 260
+    if len(歷日值) <= 回測天數 + 50:
+        raise ValueError("歷日值資料太少，無法回測！")
+
+    # 建立字典以確保「預測日期」與「預測值」精準對齊
+    回測預測字典 = {}
+
+    # 滾動回測驗證
+    for i in range(回測天數):
+        # 決定當前迴圈要預測的目標點在整個序列中的位置
+        目標位置 = len(歷日值) - 回測天數 + i
+        
+        # 訓練集絕對不包含目標點
+        回測訓練集 = 歷日值.iloc[:目標位置]
+        預測目標日期 = 歷日值.index[目標位置]
+        
+        # 建立並訓練模型
+        回測模型 = ThetaModel(回測訓練集, period=260, method="auto").fit()
+        
+        # 預報未來 1 步
+        單日預測 = 回測模型.forecast(steps=1)
+        
+        # 將預測值精確紀錄在該日期下
+        回測預測字典[預測目標日期] = 單日預測.values[0]
+
+    # 將回測預測結果轉換為帶有時間索引的 Series
+    回測值_Series = pd.Series(回測預測字典, name="回測預測值")
+    
+    # 擷取對應時間軸的真實歷史值
+    真實歷史值 = 歷日值.loc[回測值_Series.index]
+
+    # 4. 計算回測指標
+    rmse = np.sqrt(mean_squared_error(真實歷史值, 回測值_Series))
+    mape = np.mean(np.abs((真實歷史值 - 回測值_Series) / 真實歷史值))
+
+    # 5. 模型名稱定義
+    模型名稱 = "ThetaModel"
+
+    # 6. 自動動態識別時間參數
+    最近日期 = 歷日值.index[-1]
+    今年數 = 最近日期.year
+    次年數 = 今年數 + 1
+    次年底 = pd.Timestamp(f"{次年數}-12-31")
+
+    未來時軸 = pd.date_range(
+        start=最近日期 + pd.offsets.BDay(1), end=次年底, freq="B"
+    )
+    預測日數 = len(未來時軸)
+
+    # 7. 以全部歷史資料建立最終預測模型並外推
+    預測模型 = ThetaModel(歷日值, period=260, method="auto").fit()
+    預估值_陣列 = 預測模型.forecast(steps=預測日數)
+    
+    # 轉回帶有未來時軸的 Series
+    預估值 = pd.Series(預估值_陣列.values, index=未來時軸, name="預估值")
+
+    # =====================================================================
+    # 📈 將歷日值與預估值結合，求出「預估季均值」(包含多維度指標的 DataFrame)
+    # =====================================================================
+    # 將歷史與未來日值拼接
+    全時軸日值 = pd.concat([歷日值, 預估值])
+
+    # 因應新版 Pandas 規範，將 'Q' 改為 'QE' (Quarter End) 進行季度重採樣
+    季聚合 = 全時軸日值.resample('QE')
+
+    # 計算各季度核心指標
+    季均值 = 季聚合.mean()
+    季起日值 = 季聚合.first()
+    季迄日值 = 季聚合.last()
+    季增減數 = 季迄日值 - 季起日值  # 👈 季迄日值減季起日值
+
+    # 整合封裝成 DataFrame
+    預估季均值 = pd.DataFrame({
+        "季均值": 季均值,
+        "季起日值": 季起日值,
+        "季迄日值": 季迄日值,
+        "季增減數": 季增減數
+    })
+
+    # 將轉換後的 DatetimeIndex 轉為季度區間表達的 PeriodIndex (例如: 2026Q1)
+    預估季均值.index = 預估季均值.index.to_period('Q')
+
+    # 8. 封裝最終預測結果
+    預測結果 = pd.Series({
+        "預估值": 預估值,
+        "預估季均值": 預估季均值,
+        "rmse": rmse,
+        "mape": mape,
+        "模型名稱": 模型名稱
+    })
+    
     return 預測結果
