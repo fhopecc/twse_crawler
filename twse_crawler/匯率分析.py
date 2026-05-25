@@ -1,14 +1,40 @@
-from zhongwen.庫 import 通知執行時間
+from zhongwen.庫 import 結果批次寫入
+from zhongwen.程式 import 通知執行時間
+from zhongwen.時 import 今年數
 from diskcache import Cache
 from pathlib import Path
 import functools
+import logging
+logger = logging.getLogger(Path(__file__).stem)
+cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 
 cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
-cache.clear()
+匯率庫 = Path.home() / '.twse_crawler' / '資料庫' / '匯率庫'
 
-def 設定執行環境():
-    from zhongwen.python_dev import 安裝套件
-    安裝套件('yfinance')
+
+@結果批次寫入(匯率庫, '美元兌新台幣匯率', '年度數', list(range(2008, 今年數+1)))
+def 抓取年度美元兌新台幣匯率(年度數):
+    '''
+    一、批號為年度數。
+    二、資料來源：yahoo
+    '''
+    from datetime import datetime, timedelta
+    from zhongwen.時 import 今日
+    import yfinance as yf
+    import pandas as pd
+    logger.info(f"從 Yahoo Finance 抓取{年度數}年美元兌台幣匯率！")
+    data = yf.download('USDTWD=X', start=datetime(年度數,1,1)
+                      , end=datetime(年度數,12,31)
+                      ,interval='1d')
+    if not data.empty:
+        df = data[['Close']]
+        df.columns = ['匯率']
+        df.index.name = '交易日'
+        df = df.reset_index()
+        df = df.sort_index()
+        return df
+    else:
+        raise Exception(f"未能從 Yahoo Finance 獲取{年度數}年美元兌台幣匯率！")
 
 @functools.cache
 @通知執行時間

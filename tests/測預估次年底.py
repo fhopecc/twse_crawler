@@ -12,18 +12,17 @@ class Test(unittest.TestCase):
         from twse_crawler.財報分析 import 取財報彙總表
         from twse_crawler.營收分析 import 取歷月營收表
         import pandas as pd
+        r = 取歷月營收表('泰銘').set_index('營收月份').營收
+        r = 預估至次年底每月值(r)
+        表示(r, 顯示索引=True)
+        表示(r.預估每月值.tail(36), 顯示索引=True) 
+        self.assertFalse(True)
+
         歷季損益表 = 取財報彙總表('泰銘')
         歷季損益表 = 歷季損益表.set_index(歷季損益表.財報日期.dt.to_period('Q'))
         r = 預估至次年底每季值(歷季損益表.業外損益)
         表示(r.預估每季值, 顯示索引=True) 
-        self.assertFalse(True)
-
-        r = 取歷月營收表('泰銘').set_index('營收月份').營收
-        r = 預估至次年底每月值(r)
-        表示(r.預估每季總值, 顯示索引=True) 
-        print(r.模型準確度說明)
-        # 表示(r.預估季值, 顯示索引=True)
-        print(r.模型準確度說明)
+ 
         表示(r.預估價, 顯示索引=True) 
         表示(r.預估季價, 顯示索引=True) 
  
