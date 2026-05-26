@@ -14,7 +14,7 @@ class Test(unittest.TestCase):
         # 刪除指定名稱快取(cache, '以鉛價預測次年每股盈餘')
         股票 = '泰銘'
         df = 以鉛價預測次年每股盈餘(股票)
-        表示(df)
+        print(df.預測說明)
         self.assertTrue(False)
         h = 取財報彙總表(股票)
         m = 以鉛價預測次年底毛利率(股票)

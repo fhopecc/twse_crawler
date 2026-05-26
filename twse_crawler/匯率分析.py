@@ -82,13 +82,15 @@ def 以匯率預測次年底業外損益(股票):
     """
     from twse_crawler.預估次年底 import 依外部季數據預估次年底數值
     from twse_crawler.預估次年底 import 表達預測準確度
+    from twse_crawler.預估次年底 import 表達預估方法
     from twse_crawler.財報分析 import 取財報彙總表
     from zhongwen.表 import 表示
     預估季均匯率結果 = 預測次年底美元匯率()
     預估季均匯率 = 預估季均匯率結果.預估季均值[['季均值', '季增減數']]
     df = 取財報彙總表(股票).set_index('財報日期').to_period('Q')
     r = 依外部季數據預估次年底數值(df.業外損益, 預估季均匯率, 單位="元")
-    r['預估方法說明'] = f'輸入{預估季均匯率結果.預估方法說明}，運用{r.模型準確度說明}'
+    r['預估方法說明'] = (f'{預估季均匯率結果.預估方法說明}，併同{表達預估方法(r)}'
+                        )
     return r
 
 @functools.cache
