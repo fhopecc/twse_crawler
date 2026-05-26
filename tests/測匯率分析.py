@@ -12,10 +12,10 @@ class Test(unittest.TestCase):
         from zhongwen.快取 import 刪除指定名稱快取
         from zhongwen.表 import 表示
         cache.clear()
-        df = 預測次年底美元匯率()
-        print(df.預測方法)
-        # 股票 = '泰銘'
-        # df = 以匯率預測次年底業外損益(股票)
+        # df = 預測次年底美元匯率()
+        股票 = '泰銘'
+        df = 以匯率預測次年底業外損益(股票)
+        print(df.預估方法說明)
         # 表示(df.預估各季值, 顯示索引=True)
 
 if __name__ == '__main__':
