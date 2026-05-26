@@ -4,19 +4,23 @@ import unittest
 class Test(unittest.TestCase):
     '依方法名稱字母順序測試'
     def test(self):
-        from twse_crawler.預估次年底 import 預估次年底價格, 依外部季數據預估次年底數值
+        from twse_crawler.預估次年底 import 依外部季數據預估次年底數值
         from twse_crawler.預估次年底 import 預估至次年底每月值
         from twse_crawler.預估次年底 import 預估至次年底每季值
         from zhongwen.表 import 表示
         from twse_crawler.鉛價分析 import 取鉛價
         from twse_crawler.財報分析 import 取財報彙總表
+        from twse_crawler.鉛價分析 import 以鉛價預測次年每股盈餘
         from twse_crawler.營收分析 import 取歷月營收表
         import pandas as pd
+        股票 = '泰銘'
+        r = 以鉛價預測次年每股盈餘(股票)
+        表示(r, 顯示索引=True)
+
+        self.assertFalse(True)
         r = 取歷月營收表('泰銘').set_index('營收月份').營收
         r = 預估至次年底每月值(r)
-        表示(r, 顯示索引=True)
         表示(r.預估每月值.tail(36), 顯示索引=True) 
-        self.assertFalse(True)
 
         歷季損益表 = 取財報彙總表('泰銘')
         歷季損益表 = 歷季損益表.set_index(歷季損益表.財報日期.dt.to_period('Q'))

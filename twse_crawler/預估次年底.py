@@ -15,12 +15,18 @@ def 表達期間(期間):
 def 表達預估方法(預估結果, 預估目標='業外損益', 單位='元', 時間單位='季'):
     from zhongwen.數 import 取最簡約數
     m = 預估結果
-    最
-    return (
-    f'依{表達期間(m.最近歷史值季度)}前{m.歷史值數量:,}{時間單位}{預估目標}訓練'
+    if 時間單位=='季':
+        訓練資料說明 = f'依{表達期間(m.最近歷史值季度)}前{m.歷史值數量:,}{時間單位}{預估目標}訓練'
+        預估數量說明 = f'預估至{m.最後預估值季度.year-1911:,}年底之{m.預估值數量:,}{時間單位}{預估目標}'
+    elif 時間單位=='月':
+        訓練資料說明 = f'依{表達期間(m.最近歷史值月份)}前{m.歷史月數:,}月{時間單位}{預估目標}訓練'
+        預估數量說明 = f'預估至{m.最後預估值月份.year-1911:,}年底之{m.預測月數:,}{時間單位}{預估目標}'
+    else:
+        訓練資料說明 = f'依{表達期間(m.最近歷史值日期)}前{m.歷史值數量:,}{時間單位}{預估目標}訓練'
+        預估數量說明 = f'預估至{m.最後預估值日期.year-1911:,}年底之{m.預估值數量:,}{時間單位}{預估目標}'
+    return (f'{訓練資料說明}'
     f'得回測{m.回測資料數:,}{時間單位}之變動範圍為{取最簡約數(m.rmse)}{單位}，比率{m.mape:,.2%}'
-    f'{m.模型名稱}模型，'
-    f'預估至{m.最後預估值季度.year-1911:,}年底之{m.預估值數量:,}{時間單位}{預估目標}'
+    f'{m.模型名稱}模型，{預估數量說明}'
     )
 
 def 表達模型精準度(rmse, mape, 單位='%') -> str:
@@ -221,163 +227,6 @@ def 預估至次年底每季值(
     
     return 預測結果
 
-def 預估至次年底每月值(
-    歷月數值: "pd.Series",
-    單位: str = '元'
-) -> "pd.Series":
-    """
-    一、歷月數值之索引須為 pd.PeriodIndex(freq='M')，且不納入任何外部變數。
-    二、利用 Optuna 最小化滾動盲測的 RMSE，動態尋找最佳「歷史記憶視窗大小」與「季節性模式」。
-    三、底層採用經典 Theta Method，自動進行 12 個月季節性調整與趨勢外推。
-    四、傳回預估每月值、預估每季總值，以及各項模型評估指標。
-    """
-    # 1. 於函式內部進行所有必要套件導入
-    import warnings
-    import numpy as np
-    import pandas as pd
-    import optuna
-    from statsmodels.tsa.forecasting.theta import ThetaModel
-    from sklearn.metrics import mean_squared_error
-
-    warnings.filterwarnings("ignore")
-    optuna.logging.set_verbosity(optuna.logging.WARNING)
-
-    # 2. 數據型態檢查與型態防禦
-    if not isinstance(歷月數值.index, pd.PeriodIndex) or 歷月數值.index.freqstr != 'M':
-        raise ValueError(f"歷月數值索引必須為 pd.PeriodIndex(freq='M')，實際提供資料索引為 {type(歷月數值.index)}")
-
-    y_原始 = 歷月數值.astype(float)
-    目標名稱 = y_原始.name if y_原始.name else '月營收'
-    歷史月數 = len(y_原始)
-    回測月數 = 12  # 採取 12 個月（完整一年）進行滾動盲測
-
-    # 3. 動態識別並建構預測時間軸（向未來外推至次年底）
-    最近月份 = y_原始.index[-1]
-    今年數 = 最近月份.year
-    次年數 = 今年數 + 1
-
-    未來下一月 = 最近月份 + 1
-    次年底最後一月 = pd.Period(f"{次年數}-12", freq='M')
-    未來月時軸 = pd.period_range(start=未來下一月, end=次年底最後一月, freq='M')
-    外推步數 = len(未來月時軸)
-
-    # =====================================================================
-    # 🎯 4. 定義 Optuna 最佳化目標函數 (最小化滾動盲測下的預測誤差 RMSE)
-    # =====================================================================
-    def objective(trial):
-        min_window = 24  
-        max_window = 歷史月數 - 回測月數
-        if max_window <= min_window:
-            window_size = min_window
-        else:
-            window_size = trial.suggest_int('window_size', min_window, max_window)
-            
-        method_choice = trial.suggest_categorical("method", ["auto", "additive", "multiplicative"])
-
-        單步回測值 = []
-        真實對比值 = []
-
-        for i in range(回測月數):
-            當前終點 = 歷史月數 - 回測月數 + i
-            訓練起點 = max(0, 當前終點 - window_size)
-
-            y_訓練 = y_原始.iloc[訓練起點:當前終點]
-            真實對比值.append(y_原始.iloc[當前終點])
-
-            try:
-                模型 = ThetaModel(y_訓練, period=12, method=method_choice)
-                模型擬合 = 模型.fit()
-
-                單月預測結果 = 模型擬合.forecast(1)
-                單步回測值.append(單月預測結果.values[0])
-            except:
-                return float('inf')
-
-        if len(單步回測值) < 回測月數:
-            return float('inf')
-
-        真實值_陣列 = np.array(真實對比值)
-        回測值_陣列 = np.array(單步回測值)
-
-        評估_mape = np.mean(np.abs((真實值_陣列 - 回測值_陣列) / 真實值_陣列))
-        評估_rmse = np.sqrt(mean_squared_error(真實值_陣列, 回測值_陣列))
-
-        trial.set_user_attr("mape", float(評估_mape))
-        trial.set_user_attr("rmse", float(評估_rmse))
-
-        return 評估_rmse
-
-    # =====================================================================
-    # 🚀 5. 啟動 Optuna 最佳化尋找最優超參數
-    # =====================================================================
-    研究工廠 = optuna.create_study(direction='minimize')
-    研究工廠.optimize(objective, n_trials=30)
-
-    最佳參數 = 研究工廠.best_params
-    最佳視窗 = 最佳參數.get('window_size', 歷史月數 - 回測月數)
-    最佳模式 = 最佳參數.get('method', 'auto')
-
-    最佳實驗 = 研究工廠.best_trial
-    mape_值 = 最佳實驗.user_attrs.get("mape", np.nan)
-    rmse_值 = 最佳實驗.user_attrs.get("rmse", np.nan)
-
-    # 6. 擬合最終 Theta 預測模型（限制在最佳記憶視窗內）
-    最終訓練起點 = max(0, 歷史月數 - 最佳視窗)
-    y_最終訓練 = y_原始.iloc[最終訓練起點:]
-
-    最終模型 = ThetaModel(y_最終訓練, period=12, method=最佳模式)
-    最終模型擬合 = 最終模型.fit()
-
-    # 7. 外推未來預測值至次年底
-    預估月_陣列 = 最終模型擬合.forecast(外推步數)
-    預估月_序列 = pd.Series(預估月_陣列.values, index=未來月時軸)
-
-    # =====================================================================
-    # 📊 8. 整合與計算「預估每月值」與「預估每季總值」
-    # =====================================================================
-    預估每月全序列 = pd.concat([y_原始, 預估月_序列])
-
-    預估每月值 = pd.DataFrame({
-        f"預估每月{目標名稱}": 預估每月全序列
-    }, index=預估每月全序列.index)
-
-    預估每季總值 = 預估每月值.resample('Q').sum()
-    預估每季總值.columns = [f"預估每季{目標名稱}"]
-
-    # =====================================================================
-    # 📈 9. 計算同比指標 (YoY)
-    # =====================================================================
-    # 最近歷史月同比：(當月 / 去年同月) - 1
-    if 歷史月數 > 12:
-        最近歷史月值 = y_原始.iloc[-1]
-        去年同月歷史值 = y_原始.iloc[-13]
-        最近歷史月同比 = (最近歷史月值 / 去年同月歷史值) - 1 if 去年同月歷史值 != 0 else np.nan
-    else:
-        最近歷史月同比 = np.nan
-
-    # 預測首月同比：(預測第一月 / 歷史對應同月)
-    # 預測首月為 未來下一月，其對應歷史同月為 12 個月前（即最近歷史月份往回推 11 個月）
-    if 歷史月數 >= 12:
-        預測首月值 = 預估月_序列.iloc[0]
-        對應歷史同月值 = y_原始.iloc[-12]
-        預測首月同比 = (預測首月值 / 對應歷史同月值) - 1 if 對應歷史同月值 != 0 else np.nan
-    else:
-        預測首月同比 = np.nan
-
-    # 10. 傳回結果 Series
-    預測結果 = pd.Series({
-        "預估每月值": 預估每月值,
-        "預估每季總值": 預估每季總值,
-        "歷史月數": 歷史月數,
-        "預測月數": 外推步數,
-        "最近歷史月同比": 最近歷史月同比,
-        "預測首月同比": 預測首月同比,
-        "rmse": rmse_值,
-        "mape": mape_值,
-        "模型名稱": f"ThetaModel (Window: {最佳視窗}, Method: {最佳模式})"
-    })
-    return 預測結果
-
 def 預估次年底值(歷日值: "pd.Series", 預估目標 = '鉛價', 單位 = '美元'):
     """
     一、歷日值索引須是 DatetimeIndex。
@@ -518,7 +367,7 @@ def 預估次年底值(歷日值: "pd.Series", 預估目標 = '鉛價', 單位 =
     # 📈 將歷史與預估值結合，計算「預估季均值」
     # =====================================================================
     全時軸日值 = pd.concat([歷日值, 預估值])
-    季聚合 = 全時軸日值.resample('QE')
+    季聚合 = 全時軸日值.resample('Q')
 
     預估季均值 = pd.DataFrame({
         "季均值": 季聚合.mean(),
@@ -526,7 +375,7 @@ def 預估次年底值(歷日值: "pd.Series", 預估目標 = '鉛價', 單位 =
         "季迄日值": 季聚合.last(),
         "季增減數": 季聚合.last() - 季聚合.first()
     })
-    # 避免某些 pandas 版本在轉換 DatetimeIndex (QE) 到 PeriodIndex 時噴警告
+    # 避免某些 pandas 版本在轉換 DatetimeIndex (Q) 到 PeriodIndex 時噴警告
     預估季均值.index = 預估季均值.index.to_period('Q')
 
     # 8. 封裝最終預測結果 (已加入最近歷史值日期與最後預估值日期)
@@ -719,4 +568,160 @@ def 依外部季數據預估次年底數值(
     
     return 預測結果
 
+def 預估至次年底每月值(
+    歷月數值: "pd.Series",
+    單位: str = '元'
+) -> "pd.Series":
+    """
+    一、歷月數值之索引須為 pd.PeriodIndex(freq='M')，且不納入任何外部變數。
+    二、利用 Optuna 最小化滾動盲測的 RMSE，動態尋找最佳「歷史記憶視窗大小」與「季節性模式」。
+    三、底層採用經典 Theta Method，自動進行 12 個月季節性調整與趨勢外推。
+    四、傳回預估每月值、預估每季總值，以及各項模型評估指標與時間範圍。
+    """
+    # 1. 於函式內部進行所有必要套件導入
+    import warnings
+    import numpy as np
+    import pandas as pd
+    import optuna
+    from statsmodels.tsa.forecasting.theta import ThetaModel
+    from sklearn.metrics import mean_squared_error
 
+    warnings.filterwarnings("ignore")
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+    # 2. 數據型態檢查與型態防禦
+    if not isinstance(歷月數值.index, pd.PeriodIndex) or not 歷月數值.index.freqstr.startswith('M'):
+        raise ValueError(f"歷月數值索引必須為 pd.PeriodIndex(freq='M')，實際提供資料索引為 {type(歷月數值.index)}，頻率為 {getattr(歷月數值.index, 'freqstr', None)}")
+
+    y_原始 = 歷月數值.astype(float)
+    目標名稱 = y_原始.name if y_原始.name else '月營收'
+    歷史月數 = len(y_原始)
+    回測月數 = 12  # 採取 12 個月（完整一年）進行滾動盲測
+
+    # 3. 動態識別並建構預測時間軸（向未來外推至次年底，統一使用 freq='ME'）
+    最近月份 = y_原始.index[-1]
+    今年數 = 最近月份.year
+    次年數 = 今年數 + 1
+
+    未來下一月 = 最近月份 + 1
+    次年底最後一月 = pd.Period(f"{次年數}-12", freq='M')
+    未來月時軸 = pd.period_range(start=未來下一月, end=次年底最後一月, freq='M')
+    外推步數 = len(未來月時軸)
+
+    # =====================================================================
+    # 🎯 4. 定義 Optuna 最佳化目標函數 (最小化滾動盲測下的預測誤差 RMSE)
+    # =====================================================================
+    def objective(trial):
+        min_window = 24  
+        max_window = 歷史月數 - 回測月數
+        if max_window <= min_window:
+            window_size = min_window
+        else:
+            window_size = trial.suggest_int('window_size', min_window, max_window)
+            
+        method_choice = trial.suggest_categorical("method", ["auto", "additive", "multiplicative"])
+
+        單步回測值 = []
+        真實對比值 = []
+
+        for i in range(回測月數):
+            當前終點 = 歷史月數 - 回測月數 + i
+            訓練起點 = max(0, 當前終點 - window_size)
+
+            y_訓練 = y_原始.iloc[訓練起點:當前終點]
+            真實對比值.append(y_原始.iloc[當前終點])
+
+            try:
+                模型 = ThetaModel(y_訓練, period=12, method=method_choice)
+                模型擬合 = 模型.fit()
+
+                單月預測結果 = 模型擬合.forecast(1)
+                單步回測值.append(單月預測結果.values[0])
+            except:
+                return float('inf')
+
+        if len(單步回測值) < 回測月數:
+            return float('inf')
+
+        真實值_陣列 = np.array(真實對比值)
+        回測值_陣列 = np.array(單步回測值)
+
+        評估_mape = np.mean(np.abs((真實值_陣列 - 回測值_陣列) / 真實值_陣列))
+        評估_rmse = np.sqrt(mean_squared_error(真實值_陣列, 回測值_陣列))
+
+        trial.set_user_attr("mape", float(評估_mape))
+        trial.set_user_attr("rmse", float(評估_rmse))
+
+        return 評估_rmse
+
+    # =====================================================================
+    # 🚀 5. 啟動 Optuna 最佳化尋找最優超參數
+    # =====================================================================
+    研究工廠 = optuna.create_study(direction='minimize')
+    研究工廠.optimize(objective, n_trials=30)
+
+    最佳參數 = 研究工廠.best_params
+    最佳視窗 = 最佳參數.get('window_size', 歷史月數 - 回測月數)
+    最佳模式 = 最佳參數.get('method', 'auto')
+
+    最佳實驗 = 研究工廠.best_trial
+    mape_值 = 最佳實驗.user_attrs.get("mape", np.nan)
+    rmse_值 = 最佳實驗.user_attrs.get("rmse", np.nan)
+
+    # 6. 擬合最終 Theta 預測模型（限制在最佳記憶視窗內）
+    最終訓練起點 = max(0, 歷史月數 - 最佳視窗)
+    y_最終訓練 = y_原始.iloc[最終訓練起點:]
+
+    最終模型 = ThetaModel(y_最終訓練, period=12, method=最佳模式)
+    最終模型擬合 = 最終模型.fit()
+
+    # 7. 外推未來預測值至次年底
+    預估月_陣列 = 最終模型擬合.forecast(外推步數)
+    預估月_序列 = pd.Series(預估月_陣列.values, index=未來月時軸)
+
+    # =====================================================================
+    # 📊 8. 整合與計算「預估每月值」與「預估每季總值」
+    # =====================================================================
+    預估每月全序列 = pd.concat([y_原始, 預估月_序列])
+
+    預估每月值 = pd.DataFrame({
+        f"預估每月{目標名稱}": 預估每月全序列
+    }, index=預估每月全序列.index)
+
+    預估每季總值 = 預估每月值.resample('Q').sum()
+    預估每季總值.columns = [f"預估每季{目標名稱}"]
+
+    # =====================================================================
+    # 📈 9. 計算同比指標 (YoY)
+    # =====================================================================
+    if 歷史月數 > 12:
+        最近歷史月值 = y_原始.iloc[-1]
+        去年同月歷史值 = y_原始.iloc[-13]
+        最近歷史月同比 = (最近歷史月值 / 去年同月歷史值) - 1 if 去年同月歷史值 != 0 else np.nan
+    else:
+        最近歷史月同比 = np.nan
+
+    if 歷史月數 >= 12:
+        預測首月值 = 預估月_序列.iloc[0]
+        對應歷史同月值 = y_原始.iloc[-12]
+        預測首月同比 = (預測首月值 / 對應歷史同月值) - 1 if 對應歷史同月值 != 0 else np.nan
+    else:
+        預測首月同比 = np.nan
+
+    # 10. 傳回結果 Series (維持 pd.Period 型態)
+    預測結果 = pd.Series({
+        "預估每月值": 預估每月值,
+        "預估每季總值": 預估每季總值,
+        "歷史月數": 歷史月數,
+        "預測月數": 外推步數,
+        "回測資料數": 回測月數,
+        "模型參數": 最佳參數,
+        "最近歷史值月份": 最近月份,       # 這裡直接傳回 pd.Period 物件
+        "最後預估值月份": 次年底最後一月,  # 這裡直接傳回 pd.Period 物件
+        "最近歷史月同比": 最近歷史月同比,
+        "預測首月同比": 預測首月同比,
+        "rmse": rmse_值,
+        "mape": mape_值,
+        "模型名稱": f"ThetaModel (Window: {最佳視窗}, Method: {最佳模式})"
+    })
+    return 預測結果
