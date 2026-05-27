@@ -15,7 +15,8 @@ class Test(unittest.TestCase):
         cache.clear()
         股票 = '泰銘'
         df = 以鉛價預測次年每股盈餘(股票)
-        print(df.預測說明)
+        print(df.預估說明)
+        print(df.預估方法說明)
         self.assertTrue(False)
         h = 取財報彙總表(股票)
         m = 以鉛價預測次年底毛利率(股票)
