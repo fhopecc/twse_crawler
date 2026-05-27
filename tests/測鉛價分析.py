@@ -12,6 +12,7 @@ class Test(unittest.TestCase):
         from zhongwen.時 import 今年數
         from zhongwen.快取 import 刪除指定名稱快取
         # 刪除指定名稱快取(cache, '以鉛價預測次年每股盈餘')
+        cache.clear()
         股票 = '泰銘'
         df = 以鉛價預測次年每股盈餘(股票)
         print(df.預測說明)
