@@ -1,3 +1,29 @@
+
+def 移除重覆時間詞(text):
+    import re
+    # 定義時間詞的正規表示式（匹配：幾年幾月、幾年第幾季、幾年、幾年度）
+    # 例如：115年5月、115年第2季、114年度
+    time_pattern = r"\d+年(?:第\d+季|\d+月|度)?"
+
+    # 用來記錄已經出現過的時間詞
+    seen_time_words = set()
+
+    # 定義一個替換函數
+    def replace_func(match):
+        word = match.group(0)
+        if word in seen_time_words:
+            # 如果這個時間詞之前出現過，就返回空字串（刪除）
+            return ""
+        else:
+            # 如果是第一次出現，記錄下來並保留
+            seen_time_words.add(word)
+            return word
+
+    # re.sub 會逐一掃描文字，並把匹配到的時間詞丟進 replace_func 處理
+    result = re.sub(time_pattern, replace_func, text)
+
+    return result
+
 def 表達期間(期間):
     import pandas as pd
     if isinstance(期間, pd.Period):
@@ -11,14 +37,20 @@ def 表達期間(期間):
     from zhongwen.時 import 取正式民國日期
     return 取正式民國日期(期間)
 
+def 表達預估說明(預估結果, 預估目標='毛利率', 時間單位='季'):
+    from zhongwen.數 import 取增減百分比
+    from twse_crawler.預估次年底 import 表達期間
+    return f'{表達期間(預估結果.最近歷史值時間)}{預估目標}同比{取增減百分比(預估結果.最近歷史值同比)}，預估次{時間單位}同比{取增減百分比(預估結果.首期預估值同比)}'
+
 def 表達預估方法(預估結果, 預估目標='業外損益', 單位='元', 時間單位='季'):
     from zhongwen.數 import 取最簡約數
     m = 預估結果
     訓練資料說明 = f'依{表達期間(m.最近歷史值時間)}前{m.歷史值數量:,}{時間單位}{預估目標}訓練'
     預估數量說明 = f'預估至{m.最後預估值時間.year-1911:,}年底之{m.預估值數量:,}{時間單位}{預估目標}'
-    return (f'{訓練資料說明}'
-    f'得回測{m.回測資料數:,}{時間單位}之變動範圍為{取最簡約數(m.rmse)}{單位}，比率{m.mape:,.2%}'
-    f'{m.模型名稱}模型，{預估數量說明}'
+    return (
+        f'{訓練資料說明}'
+        f'得回測{m.回測資料數:,}{時間單位}之變動範圍為{取最簡約數(m.rmse)}{單位}，比率{m.mape:,.2%}'
+        f'{m.模型名稱}模型，{預估數量說明}'
     )
 
 def 表達模型精準度(rmse, mape, 單位='%') -> str:
@@ -360,8 +392,12 @@ def 預估次年底值(歷日值: "pd.Series", 預估目標 = '鉛價', 單位 =
     # 📈 將歷史與預估值結合，計算「預估季均值」
     # =====================================================================
     全時軸日值 = pd.concat([歷日值, 預估值])
-    季聚合 = 全時軸日值.resample('Q')
-
+    try:
+        # 優先嘗試新版 Pandas 的 Quarter End 代號
+        季聚合 = 全時軸日值.resample('QE')
+    except ValueError:
+        # 如果是舊版 Pandas 噴錯，則退回使用舊代號
+        季聚合 = 全時軸日值.resample('Q')
     預估季均值 = pd.DataFrame({
         "季均值": 季聚合.mean(),
         "季起日值": 季聚合.first(),
