@@ -11,9 +11,9 @@ class Test(unittest.TestCase):
         from 股票分析.人工分析 import cache as bcache
         from zhongwen.表 import 表示
         import zhongwen.快取
-        bcache.clear()
+        # bcache.clear()
         zhongwen.快取.停止快取=True
-        r = 評級股票('2880')
+        r = 評級股票('一零四')
         表示(r)
         self.assertFalse(True)
 

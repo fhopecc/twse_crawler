@@ -361,7 +361,7 @@ def 預測股利(股票, 歷年股利=None):
     四、如已公布上年度股利，則說明較預測增減情形。
     '''
     from twse_crawler.自結損益 import 預測前年至次年每股盈餘 as 依自結損益預測每股盈餘
-    from twse_crawler.營收分析 import 預測前年至次年每股盈餘 as 依月營收預測每股盈餘
+    from twse_crawler.營收分析 import 以營收預測次年每股盈餘 as 依月營收預測每股盈餘
     from twse_crawler.損益表分析 import 取損益表, 取前年至次年各季損益表
     from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from zhongwen.快取 import 刪除指定名稱快取
