@@ -75,20 +75,6 @@ def 預測次年底鉛價():
     r['預估方法'] = 表達預估方法(r, 時間單位='日') 
     return r
 
-def 預測次年底營收(股票):
-    """
-    一、傳回預估每月值、預估每季總值、預估方法說明及預估說明。
-    """
-    from twse_crawler.預估次年底 import 預估至次年底每月值
-    from twse_crawler.營收分析 import 取歷月營收表
-    from twse_crawler.預估次年底 import 表達預估方法, 表達預估說明
-    import pandas as pd
-    df = 取歷月營收表(股票).set_index('營收月份').營收
-    df.index = df.index.asfreq('M')
-    p = 預估至次年底每月值(df)
-    p['預估方法說明'] = 表達預估方法(p, '營收', 時間單位='月')
-    p['預估說明'] = 表達預估說明(p, '營收')
-    return p
 
 @通知執行時間
 @cache.memoize('以鉛價預測次年底毛利率', expire=24*60*60)
@@ -135,42 +121,45 @@ def 以鉛價預測次年每股盈餘(股票, 歷月營收表=None):
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from twse_crawler.預估次年底 import 表達預估方法, 表達預估說明
     from twse_crawler.營收分析 import 取預測盈餘說明
-    from zhongwen.時 import 今年數, 取正式民國日期
     from zhongwen.快取 import 刪除指定名稱快取
     from twse_crawler.損益表分析 import 取損益表
-    from zhongwen.表 import 顯示, 數據不足
+    from zhongwen.表 import 表示, 數據不足
     from zhongwen.數 import 取最簡約數
     from zhongwen.文 import 臚列
-    from zhongwen.表 import 表示
     import pandas as pd
     公司代號 = 查股票代號(股票)
     公司簡稱 = 查股票簡稱(股票)
+
     歷季損益表 = 取損益表(公司代號)
     歷季損益表['營收'] = 歷季損益表.營收.fillna(0)
+
     try:
         最近損益 = 歷季損益表.iloc[-1]
     except IndexError as e:
         raise 數據不足(f'{公司簡稱}歷季損益', 0, 1, '預測前年至次年每股盈餘')
     except Exception as e:
         errmsg = f'{type(e).__name__}({e})'
-        logger.error(errmsg)
-        logger.error(公司代號)
-        raise Exception(f"{公司代號}{errmsg}")
+        m = f"{公司代號}發生{errmsg}"
+        raise Exception(m)
 
     try:
         歷季損益表 = 歷季損益表.set_index(歷季損益表.財報日期.dt.to_period('Q'))
     except AttributeError:
         歷季損益表['財報日期'] = 歷季損益表.index
+    # 預測營收
     預測營收結果 = 預測次年底營收(股票)
     預測營收 = 預測營收結果.預估每季總值.預估每季營收
     future_index = 預測營收.index[預測營收.index > 歷季損益表.index.max()]
     new_index = 歷季損益表.index.append(future_index)
     歷季損益表 = 歷季損益表.reindex(new_index)
     歷季損益表['營收'] = 歷季損益表.營收.fillna(預測營收)
+
+    # 預測毛利率及毛利
     預測毛利率結果 = 以鉛價預測次年底毛利率(股票)
     預測毛利率 = 預測毛利率結果.預估各季值
     歷季損益表['毛利率'] = 歷季損益表.毛利率.fillna(預測毛利率)
     歷季損益表['毛利'] = 歷季損益表.毛利.fillna(預測營收*預測毛利率)
+
     from twse_crawler.預估次年底 import 依外部季數據預估次年底數值
     預測營利結果 = 依外部季數據預估次年底數值(歷季損益表.營利.dropna()
                                              ,歷季損益表[['毛利']]
@@ -178,25 +167,33 @@ def 以鉛價預測次年每股盈餘(股票, 歷月營收表=None):
     預測營利方法說明 = 表達預估方法(預測營利結果,'營利')
     預測營利 = 預測營利結果.預估各季值
     歷季損益表['營利'] = 歷季損益表.營利.fillna(預測營利)
+
+    # 預測業外損益
     from twse_crawler.預估次年底 import 預估至次年底每季值
     # 預測業外損益結果 = 預估至次年底每季值(歷季損益表.業外損益.dropna())
     from twse_crawler.匯率分析 import 以匯率預測次年底業外損益, cache as cacheb
     cacheb.clear()
     預測業外損益結果 = 以匯率預測次年底業外損益(股票)
     預測業外損益 = 預測業外損益結果.預估各季值
-    預測業外損益說明 = 表達預估說明(預測業外損益結果, '業外損益')
     歷季損益表['業外損益'] = 歷季損益表.業外損益.fillna(預測業外損益)
+
+    # 預測稅前淨利
     歷季損益表['稅前淨利'] = 歷季損益表.稅前淨利.fillna(預測營利+預測業外損益)
 
+    # 預測淨利
     歷季損益表['淨利'] = 歷季損益表.淨利.fillna(歷季損益表.稅前淨利*0.8)
+
+    # 預測每股盈餘
     q = 取股票基本資料彙總表(股票)
     股數 = q.股數.iloc[-1]
     歷季損益表['每股盈餘'] = 歷季損益表.每股盈餘.fillna(歷季損益表.淨利/股數)
     from zhongwen.時 import 前年至次年各季末
     前年至次年各季數據 = 歷季損益表.reindex(index=前年至次年各季末.to_period('Q'))
     年度每股盈餘 = 前年至次年各季數據.每股盈餘.resample('Y').sum()
+
+    # 表達預估方法及預估結果
     from twse_crawler.預估次年底 import 表達預測準確度, 移除重覆時間詞
-    預估方法說明 = 移除重覆時間詞(f'以{預測營收結果.預估方法說明}'
+    預估方法說明 = (f'以{預測營收結果.預估方法說明}'
          f'，乘上{預測毛利率結果.預估方法說明}之毛利'
          f'，輸入以{預測營利方法說明}'
          f'，與以{預測業外損益結果.預估方法說明}'
@@ -204,9 +201,9 @@ def 以鉛價預測次年每股盈餘(股票, 歷月營收表=None):
          f'，扣除最高稅率20％之營所稅之損益'
          f'，再除以{取最簡約數(股數)}股之每股盈餘'
          )
-    預估說明 = 移除重覆時間詞(f'{預測營收結果.預估說明}'
+    預估說明 = (f'{預測營收結果.預估說明}'
                 f'，{預測毛利率結果.預估說明}'
-                f'，{預測業外損益說明}'
+                f'，{預測業外損益結果.預估說明}'
                 f'，{取預測盈餘說明(年度每股盈餘, 前年至次年各季數據)}'
                 )
     預測結果 = pd.Series({'前年至次年每股盈餘': pd.Series(年度每股盈餘)

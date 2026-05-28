@@ -77,12 +77,12 @@ def 預測次年底美元匯率():
 @cache.memoize('以匯率預測次年底業外損益', expire=24*60*60)
 def 以匯率預測次年底業外損益(股票):
     """
-    一、傳回預估各季值、預估方法說明
+    一、傳回預估各季值、預估說明、預估方法說明
     二、預估各季值含歷季值。
     """
     from twse_crawler.預估次年底 import 依外部季數據預估次年底數值
     from twse_crawler.預估次年底 import 表達預測準確度
-    from twse_crawler.預估次年底 import 表達預估方法
+    from twse_crawler.預估次年底 import 表達預估方法, 表達預估說明
     from twse_crawler.財報分析 import 取財報彙總表
     from zhongwen.表 import 表示
     預估季均匯率結果 = 預測次年底美元匯率()
@@ -91,6 +91,7 @@ def 以匯率預測次年底業外損益(股票):
     r = 依外部季數據預估次年底數值(df.業外損益, 預估季均匯率, 單位="元")
     r['預估方法說明'] = (f'{預估季均匯率結果.預估方法說明}，併同{表達預估方法(r)}'
                         )
+    r['預估說明'] = 表達預估說明(r, '業外損益')
     return r
 
 @functools.cache

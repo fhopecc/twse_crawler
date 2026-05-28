@@ -68,189 +68,6 @@ def 表達模型精準度(rmse, mape, 單位='%') -> str:
 def 表達預測準確度(預測結果, 單位='%') -> str:
     return 表達模型精準度(預測結果.rmse, 預測結果.mape, 單位)
 
-def 預估至次年底每季值(
-    歷季數值: "pd.Series",
-    單位 = '元'
-) -> "pd.Series":
-    """
-    一、傳回預估每季值及模型準確度說明。
-    二、利用 Optuna 最小化滾動盲測的 AIC，動態尋找最佳「歷史記憶視窗大小」。
-    三、底層採用 Holt-Winters 季度指數平滑模型，全方位加入空值防禦，適合業外損益等高波動科目。
-    """
-    # 1. 於函式內部進行套件導入 (維持高內聚設計)
-    import warnings
-    import numpy as np
-    import pandas as pd
-    import optuna
-    from statsmodels.tsa.holtwinters import ExponentialSmoothing
-    from sklearn.metrics import mean_squared_error
-
-    warnings.filterwarnings("ignore")
-    optuna.logging.set_verbosity(optuna.logging.WARNING)
-
-    # =====================================================================
-    # 🎯 2. 數據型態檢查、防禦與自動對齊 (徹底相容 Q-DEC 頻率陷阱)
-    # =====================================================================
-    # 檢查是否為 PeriodIndex 且屬於季度類型 (只要開頭是 'Q'，例如 Q, Q-DEC 皆相容)
-    是季度索引 = isinstance(歷季數值.index, pd.PeriodIndex) and 歷季數值.index.freqstr.startswith('Q')
-    
-    if not 是季度索引:
-        try:
-            # 如果不是，嘗試強制轉換（相容 DatetimeIndex 或其他不標準的索引）
-            歷季數值.index = pd.to_datetime(歷季數值.index).to_period('Q')
-        except Exception as e:
-            raise ValueError(
-                f"歷季數值索引無法轉換為季度型態，實際提供資料索引為 {type(歷季數值.index)}、"
-                f"{getattr(歷季數值.index, 'freqstr', '無頻率')}，錯誤原因: {e}"
-            )
-        
-    # 🌟 強制將索引統一對齊為標準 'Q' 頻率，避免 statsmodels 拋出警告或錯誤
-    y_原始 = 歷季數值.astype(float)
-    y_原始.index = y_原始.index.asfreq('Q')
-    
-    目標名稱 = y_原始.name if y_原始.name else '季營收'
-    回測季數 = 4  # 採取 4 季（完整一年）進行滾動盲測
-
-    # 3. 動態識別並建構預測時間軸（向未來外推至次年底）
-    最近季度 = y_原始.index[-1]
-    from zhongwen.時 import 今年數
-    次年數 = 今年數 + 1
-    
-    未來下一季 = 最近季度 + 1
-    次年底最後一季 = pd.Period(f"{次年數}Q4", freq='Q')
-    未來季時軸 = pd.period_range(start=未來下一季, end=次年底最後一季, freq='Q')
-    外推步數 = len(未來季時軸)
-
-    # =====================================================================
-    # 🎯 4. 定義 Optuna 最佳化目標函數 (最小化滾動盲測下的 AIC)
-    # =====================================================================
-    def objective(trial):
-        # 參數：歷史記憶視窗 (季度資料至少需要 12 季/3年，才能穩定識別 4 季的完整循環)
-        min_window = 12  
-        max_window = len(y_原始) - 回測季數
-        if max_window <= min_window:
-            window_size = min_window
-        else:
-            window_size = trial.suggest_int('window_size', min_window, max_window)
-
-        單步回測值 = []
-        累加_aic = 0.0
-        有效回測步數 = 0
-        
-        # 執行 4 季的歷史滾動盲測 (Walk-forward Validation)
-        for i in range(回測季數):
-            當前終點 = len(y_原始) - 回測季數 + i
-            訓練起點 = max(0, 當前終點 - window_size)
-            
-            y_訓練 = y_原始.iloc[訓練起點:當前終點]
-            
-            try:
-                # 建立 Holt-Winters 模型
-                模型 = ExponentialSmoothing(
-                    y_訓練, 
-                    trend='add', 
-                    seasonal='add', 
-                    seasonal_periods=4,
-                    initialization_method='estimated'
-                )
-                模型擬合 = 模型.fit()
-                
-                # 預測未來 1 步
-                單季預測結果 = 模型擬合.forecast(1)
-                預測值 = 單季預測結果.values[0]
-                
-                # 🌟 關鍵防禦一：如果模型返回的是 NaN 或 Inf，直接判定該歷史視窗失敗（給予無限大懲罰）
-                if pd.isna(預測值) or np.isinf(預測值):
-                    return float('inf')
-                    
-                單步回測值.append(預測值)
-                
-                # 累加模型在該視窗下的 AIC
-                累加_aic += 模型擬合.aic
-                有效回測步數 += 1
-            except:
-                return float('inf')
-                
-        # 🌟 關鍵防禦二：確保回測步數完整且未包含異常值
-        if 有效回測步數 < 回測季數 or len(單步回測值) != 回測季數:
-            return float('inf')
-
-        回測值_陣列 = np.array(單步回測值)
-        
-        # 雙重防禦：確保陣列內容全為有限數值，避免 scikit-learn 報錯
-        if not np.isfinite(回測值_陣列).all():
-            return float('inf')
-
-        評估_aic = 累加_aic / 有效回測步數
-        
-        # 計算隨附的驗證指標并存入 user_attrs
-        真實值 = y_原始.iloc[-回測季數:]
-        
-        # 🌟 關鍵防禦三：分母加小量 (1e-5) 避免業外損益為 0 時導致除以零錯誤
-        評估_mape = np.mean(np.abs((真實值 - 回測值_陣列) / (真實值 + 1e-5)))
-        評估_rmse = np.sqrt(mean_squared_error(真實值, 回測值_陣列))
-        
-        trial.set_user_attr("mape", float(評估_mape))
-        trial.set_user_attr("rmse", float(評估_rmse))
-        
-        return 評估_aic
-
-    # =====================================================================
-    # 🚀 5. 啟動 Optuna 最佳化尋找最優視窗
-    # =====================================================================
-    研究工廠 = optuna.create_study(direction='minimize')
-    研究工廠.optimize(objective, n_trials=20)
-    
-    最佳參數 = 研究工廠.best_params
-    最佳視窗 = 最佳參數.get('window_size', len(y_原始) - 回測季數)
-
-    # 6. 提取最優實驗的驗證指標
-    最佳實驗 = 研究工廠.best_trial
-    mape = 最佳實驗.user_attrs.get("mape", 0.0)
-    rmse = 最佳實驗.user_attrs.get("rmse", 0.0)
-
-    # 7. 封裝模型準確度說明 (對接外部的表達模型精準度函式)
-    模型準確度說明 = 表達模型精準度(rmse, mape, 單位)
-    模型準確度說明 += f"，滾動{最佳視窗:,.0f}季視窗"
-
-    # 8. 擬合最終 Holt-Winters 預估模型（限制在最佳記憶視窗內）
-    最終訓練起點 = max(0, len(y_原始) - 最佳視窗)
-    y_最終訓練 = y_原始.iloc[最終訓練起點:]
-    
-    最終模型 = ExponentialSmoothing(
-        y_最終訓練, 
-        trend='add', 
-        seasonal='add', 
-        seasonal_periods=4,
-        initialization_method='estimated'
-    )
-    最終模型擬合 = 最終模型.fit()
-    
-    # 9. 外推未來預測值至次年底
-    預估季_陣列 = 最終模型擬合.forecast(外推步數)
-    
-    # 🌟 關鍵防禦四：財務保守原則。若未來預測值發散噴出 NaN/Inf，以歷史最後 4 季平均值安全填充
-    if 預估季_陣列.isna().any() or np.isinf(預估季_陣列.values).any():
-        安全填補值 = y_最終訓練.tail(4).mean()
-        安全填補值 = 安全填補值 if pd.notna(安全填補值) else 0.0
-        預估季_陣列 = 預估季_陣列.fillna(安全填補值).replace([np.inf, -np.inf], 安全填補值)
-        
-    預估季_序列 = pd.Series(預估季_陣列.values, index=未來季時軸)
-
-    # =====================================================================
-    # 📊 10. 整合「預估每季總值」
-    # =====================================================================
-    # 整合歷史與未來的全季度序列
-    預估每季全序列 = pd.concat([y_原始, 預估季_序列])
-    
-    # 11. 傳回結果 Series
-    預測結果 = pd.Series({
-        "預估每季值": 預估每季全序列
-       ,"模型準確度說明": 模型準確度說明
-    })
-    
-    return 預測結果
-
 def 預估次年底值(歷日值: "pd.Series", 預估目標 = '鉛價', 單位 = '美元'):
     """
     一、歷日值索引須是 DatetimeIndex。
@@ -776,4 +593,209 @@ def 依外部季數據預估次年底數值(
         "最近歷史值同比": 最近歷史值同比,  # 新增項目
         "首期預估值同比": 首期預估值同比   # 新增項目
     })
+    return 預測結果
+
+def 預估至次年底每季值(
+    歷季數值: "pd.Series",
+    單位 = '元'
+) -> "pd.Series":
+    """
+    一、傳回預估各季值及豐富的模型評估指標與時間、同比資訊。
+    二、利用 Optuna 最小化滾動盲測的 AIC，動態尋找最佳「歷史記憶視窗大小」。
+    三、底層採用 Holt-Winters 季度指數平滑模型，全方位加入空值防禦，適合業外損益等高波動科目。
+    """
+    # 1. 於函式內部進行套件導入 (維持高內聚設計)
+    import warnings
+    import numpy as np
+    import pandas as pd
+    import optuna
+    from statsmodels.tsa.holtwinters import ExponentialSmoothing
+    from sklearn.metrics import mean_squared_error
+
+    warnings.filterwarnings("ignore")
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+    # =====================================================================
+    # 🎯 2. 數據型態檢查、防禦與自動對齊 (徹底相容 Q-DEC 頻率陷阱)
+    # =====================================================================
+    # 檢查是否為 PeriodIndex 且屬於季度類型 (只要開頭是 'Q'，例如 Q, Q-DEC 皆相容)
+    是季度索引 = isinstance(歷季數值.index, pd.PeriodIndex) and 歷季數值.index.freqstr.startswith('Q')
+    
+    if not 是季度索引:
+        try:
+            # 如果不是，嘗試強制轉換（相容 DatetimeIndex 或其他不標準的索引）
+            歷季數值.index = pd.to_datetime(歷季數值.index).to_period('Q')
+        except Exception as e:
+            raise ValueError(
+                f"歷季數值索引無法轉換為季度型態，實際提供資料索引為 {type(歷季數值.index)}、"
+                f"{getattr(歷季數值.index, 'freqstr', '無頻率')}，錯誤原因: {e}"
+            )
+        
+    # 🌟 強制將索引統一對齊為標準 'Q' 頻率，避免 statsmodels 拋出警告或錯誤
+    y_原始 = 歷季數值.astype(float)
+    y_原始.index = y_原始.index.asfreq('Q')
+    
+    回測季數 = 4  # 採取 4 季（完整一年）進行滾動盲測
+
+    # 3. 動態識別並建構預測時間軸（向未來外推至次年底）
+    最近季度 = y_原始.index[-1]
+    from zhongwen.時 import 今年數
+    次年數 = 今年數 + 1
+    
+    未來下一季 = 最近季度 + 1
+    次年底最後一季 = pd.Period(f"{次年數}Q4", freq='Q')
+    未來季時軸 = pd.period_range(start=未來下一季, end=次年底最後一季, freq='Q')
+    外推步數 = len(未來季時軸)
+
+    # =====================================================================
+    # 🎯 4. 定義 Optuna 最佳化目標函數 (最小化滾動盲測下的 AIC)
+    # =====================================================================
+    def objective(trial):
+        # 參數：歷史記憶視窗 (季度資料至少需要 12 季/3年，才能穩定識別 4 季的完整循環)
+        min_window = 12  
+        max_window = len(y_原始) - 回測季數
+        if max_window <= min_window:
+            window_size = min_window
+        else:
+            window_size = trial.suggest_int('window_size', min_window, max_window)
+
+        單步回測值 = []
+        累加_aic = 0.0
+        有效回測步數 = 0
+        
+        # 執行 4 季的歷史滾動盲測 (Walk-forward Validation)
+        for i in range(回測季數):
+            當前終點 = len(y_原始) - 回測季數 + i
+            訓練起點 = max(0, 當前終點 - window_size)
+            
+            y_訓練 = y_原始.iloc[訓練起點:當前終點]
+            
+            try:
+                # 建立 Holt-Winters 模型
+                模型 = ExponentialSmoothing(
+                    y_訓練, 
+                    trend='add', 
+                    seasonal='add', 
+                    seasonal_periods=4,
+                    initialization_method='estimated'
+                )
+                模型擬合 = 模型.fit()
+                
+                # 預測未來 1 步
+                單季預測結果 = 模型擬合.forecast(1)
+                預測值 = 單季預測結果.values[0]
+                
+                # 🌟 關鍵防禦一：如果模型返回的是 NaN 或 Inf，直接判定該歷史視窗失敗（給予無限大懲罰）
+                if pd.isna(預測值) or np.isinf(預測值):
+                    return float('inf')
+                    
+                單步回測值.append(預測值)
+                
+                # 累加模型在該視窗下的 AIC
+                累加_aic += 模型擬合.aic
+                有效回測步數 += 1
+            except:
+                return float('inf')
+                
+        # 🌟 關鍵防禦二：確保回測步數完整且未包含異常值
+        if 有效回測步數 < 回測季數 or len(單步回測值) != 回測季數:
+            return float('inf')
+
+        回測值_陣列 = np.array(單步回測值)
+        
+        # 雙重防禦：確保陣列內容全為有限數值，避免 scikit-learn 報錯
+        if not np.isfinite(回測值_陣列).all():
+            return float('inf')
+
+        評估_aic = 累加_aic / 有效回測步數
+        
+        # 計算隨附的驗證指標并存入 user_attrs
+        真實值 = y_原始.iloc[-回測季數:]
+        
+        # 🌟 關鍵防禦三：分母加小量 (1e-5) 避免業外損益為 0 時導致除以零錯誤
+        評估_mape = np.mean(np.abs((真實值 - 回測值_陣列) / (真實值 + 1e-5)))
+        評估_rmse = np.sqrt(mean_squared_error(真實值, 回測值_陣列))
+        
+        trial.set_user_attr("mape", float(評估_mape))
+        trial.set_user_attr("rmse", float(評估_rmse))
+        
+        return 評估_aic
+
+    # =====================================================================
+    # 🚀 5. 啟動 Optuna 最佳化尋找最優視窗
+    # =====================================================================
+    研究工廠 = optuna.create_study(direction='minimize')
+    研究工廠.optimize(objective, n_trials=20)
+    
+    最佳參數 = 研究工廠.best_params
+    最佳視窗 = 最佳參數.get('window_size', len(y_原始) - 回測季數)
+
+    # 6. 提取最優實驗的驗證指標
+    最佳實驗 = 研究工廠.best_trial
+    mape = 最佳實驗.user_attrs.get("mape", np.nan)
+    rmse = 最佳實驗.user_attrs.get("rmse", np.nan)
+
+    # 7. 擬合最終 Holt-Winters 預估模型（限制在最佳記憶視窗內）
+    最終訓練起點 = max(0, len(y_原始) - 最佳視窗)
+    y_最終訓練 = y_原始.iloc[最終訓練起點:]
+    
+    最終模型 = ExponentialSmoothing(
+        y_最終訓練, 
+        trend='add', 
+        seasonal='add', 
+        seasonal_periods=4,
+        initialization_method='estimated'
+    )
+    最終模型擬合 = 最終模型.fit()
+    
+    # 8. 外推未來預測值至次年底
+    預估季_陣列 = 最終模型擬合.forecast(外推步數)
+    
+    # 🌟 關鍵防禦四：財務保守原則。若未來預測值發散噴出 NaN/Inf，以歷史最後 4 季平均值安全填充
+    if 預估季_陣列.isna().any() or np.isinf(預估季_陣列.values).any():
+        安全填補值 = y_最終訓練.tail(4).mean()
+        安全填補值 = 安全填補值 if pd.notna(安全填補值) else 0.0
+        預估季_陣列 = 預估季_陣列.fillna(安全填補值).replace([np.inf, -np.inf], 安全填補值)
+        
+    預估季_序列 = pd.Series(預估季_陣列.values, index=未來季時軸)
+
+    # =====================================================================
+    # 📊 9. 整合與計算各項延伸統計指標
+    # =====================================================================
+    # 整合歷史與未來的全季度序列
+    預估各季全序列 = pd.concat([y_原始, 預估季_序列])
+    
+    # 提取模型參數 (alpha, beta, gamma 等平滑係數)
+    模型參數字典 = {k: v for k, v in 最終模型擬合.params.items() if not k.startswith('_') and v is not None}
+    
+    # 計算最近歷史值同比 (YoY)
+    if len(y_原始) > 4:
+        最近歷史值分母 = y_原始.iloc[-5]
+        最近歷史值同比 = (y_原始.iloc[-1] - 最近歷史值分母) / 最近歷史值分母 if 最近歷史值分母 != 0 else np.nan
+    else:
+        最近歷史值同比 = np.nan
+        
+    # 計算首期預估值同比 (YoY)
+    if len(y_原始) >= 3:  # 確保預測起點的前4季存在於原始資料中
+        首期預估值分母 = y_原始.iloc[-4]
+        首期預估值同比 = (預估季_序列.iloc[0] - 首期預估值分母) / 首期預估值分母 if 首期預估值分母 != 0 else np.nan
+    else:
+        首期預估值同比 = np.nan
+
+    # 10. 傳回結果 Series
+    預測結果 = pd.Series({
+        "預估各季值": 預估各季全序列,
+        "rmse": rmse,
+        "mape": mape,
+        "歷史值數量": len(y_原始),
+        "預估值數量": 外推步數,
+        "回測資料數": 回測季數,
+        "模型名稱": "Holt-Winters Exponential Smoothing",
+        "模型參數": 模型參數字典,
+        "最近歷史值時間": 最近季度,          # 🌟 保持 pd.Period 格式
+        "最後預估值時間": 次年底最後一季,    # 🌟 保持 pd.Period 格式
+        "最近歷史值同比": 最近歷史值同比,
+        "首期預估值同比": 首期預估值同比
+    })
+    
     return 預測結果
