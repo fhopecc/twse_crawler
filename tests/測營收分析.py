@@ -9,7 +9,7 @@ class Test(unittest.TestCase):
     def test預測前年至次年每股盈餘(self):
         from twse_crawler.營收分析 import 以營收預測次年每股盈餘
         from zhongwen.表 import 表示
-        s = 以營收預測次年每股盈餘('一零四')
+        s = 以營收預測次年每股盈餘('新產')
         print(s.預估說明)
         print(s.預估方法說明)
         self.assertFalse(True)

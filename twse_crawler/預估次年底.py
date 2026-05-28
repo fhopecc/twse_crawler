@@ -273,7 +273,7 @@ def 預估至次年底每月值(
 
     # 3. 動態識別並建構預測時間軸（向未來外推至次年底，統一使用 freq='ME'）
     最近月份 = y_原始.index[-1]
-    今年數 = 最近月份.year
+    from zhongwen.時 import 今年數
     次年數 = 今年數 + 1
 
     未來下一月 = 最近月份 + 1
@@ -523,7 +523,8 @@ def 依外部季數據預估次年底數值(
     # 5. 使用最優超參數重新建立歷史底稿
     X_最佳滯後矩陣 = X_原始矩陣.shift(最佳滯後)
     最終聯集資料 = pd.concat([歷季值, X_最佳滯後矩陣], axis=1).ffill().bfill()
-    
+    # from zhongwen.表 import 表示
+    # 表示(最終聯集資料, 顯示索引=True)    
     y_歷史 = 最終聯集資料.loc[歷季值.index, 歷季值.name if 歷季值.name else 預估目標]
     X_歷史 = 最終聯集資料.loc[歷季值.index, 外部數據名稱]
     X_歷史_含常數 = sm.add_constant(X_歷史)
