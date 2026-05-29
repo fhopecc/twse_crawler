@@ -99,6 +99,7 @@ def 取損益表(股票=None, 個體報表=False):
     六、依累季前後期數據差異推算單季數據。
     七、亦能指定「個體報表」選項傳回個體損益表。
     八、以淨利除以每股盈餘設算「股數」。
+    九、傳回指定股票之損益表，其索引設為財報季度。
     '''
     from twse_crawler.股票基本資料分析 import 查股票代號
     from twse_crawler.現流表分析 import 取單期淨額
@@ -108,8 +109,10 @@ def 取損益表(股票=None, 個體報表=False):
 
     if 股票:
         股票代號 = 查股票代號(股票)
-        df = 取損益表(個體報表=個體報表)
-        return df.query('股票代號==@股票代號')
+        h = 取損益表(個體報表=個體報表)
+        h = h.query('股票代號==@股票代號')
+        h = h.set_index(h.財報日期.dt.to_period('Q')).rename_axis('財報季度')
+        return h
 
     df = 取累積損益表()
     
