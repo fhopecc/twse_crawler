@@ -504,7 +504,6 @@ def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
     六、增加預測上季每股盈餘及實際每股盈餘差異。
     '''
     from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號, 取股票基本資料彙總表
-    from twse_crawler.自結損益 import 預測前年至次年周期數據
     from twse_crawler.預估次年底 import 表達預估方法, 表達預估說明
     from twse_crawler.營收分析 import 取預測盈餘說明
     from zhongwen.快取 import 刪除指定名稱快取

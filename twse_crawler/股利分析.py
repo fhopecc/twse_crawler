@@ -362,7 +362,8 @@ def 預測股利(股票, 歷年股利=None):
     三、除息交易日為最近一次除息交易日。
     四、如已公布上年度股利，則說明較預測增減情形。
     '''
-    from twse_crawler.自結損益 import 預測前年至次年每股盈餘 as 依自結損益預測每股盈餘
+    # from twse_crawler.自結損益 import 預測前年至次年每股盈餘 as 依自結損益預測每股盈餘
+    from twse_crawler.自結損益 import 以自結損益預測次年每股盈餘, 以自結營利預測次年每股盈餘
     from twse_crawler.營收分析 import 以營收預測次年每股盈餘 as 依月營收預測每股盈餘
     from twse_crawler.鉛價分析 import 以鉛價預測次年每股盈餘
     from twse_crawler.損益表分析 import 取損益表, 取前年至次年各季損益表
@@ -373,8 +374,9 @@ def 預測股利(股票, 歷年股利=None):
     from zhongwen.數 import 取增減百分比
     import pandas as pd
     配息率, 配息率說明 = 預測配息率(股票)
-    for 預測每股盈餘 in [以鉛價預測次年每股盈餘
-                        ,依自結損益預測每股盈餘
+    for 預測每股盈餘 in [以自結營利預測次年每股盈餘
+                        ,以自結損益預測次年每股盈餘
+                        ,以鉛價預測次年每股盈餘
                         ,依月營收預測每股盈餘
                         ,依損益表預測每股盈餘]:
         try:

@@ -800,3 +800,199 @@ def 預估至次年底每季值(
     })
     
     return 預測結果
+
+def 以外部月數據預估次年底各月值(
+    歷月值: "pd.Series",
+    外部月數據表: "pd.DataFrame",
+    預估目標 = '營利',  # 🌟 已將預設值改為 '營利'
+    單位 = '元'        # 🌟 建議單位同步改為 '元' 或其他金額單位
+) -> "pd.Series":
+    """
+    一、歷月值之索引與外部月數據表之索引皆須為 pd.PeriodIndex(freq='M')。
+    二、預估結果項目：預估各月值、rmse、mape、歷史值數量、預估值數量、回測資料數、
+                     模型名稱、模型參數、最近歷史值時間、最後預估值時間、
+                     最近歷史值同比、首期預估值同比。
+    三、全程在純月頻率（Freq='M'）下進行數據對齊、滾動盲測與預測。
+    """
+    # 1. 於函式內部進行套件導入
+    import warnings
+    import numpy as np
+    import pandas as pd
+    import optuna
+    import statsmodels.api as sm
+    from sklearn.metrics import mean_squared_error
+
+    warnings.filterwarnings("ignore")
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+    # 2. 數據對齊、清洗與欄名自動推論
+    if not isinstance(歷月值.index, pd.PeriodIndex):
+        歷月值.index = pd.to_datetime(歷月值.index).to_period('M')
+    歷月值 = 歷月值.astype(float)
+    
+    if not isinstance(外部月數據表.index, pd.PeriodIndex):
+        外部月數據表.index = pd.to_datetime(外部月數據表.index).to_period('M')
+    X_原始矩陣 = 外部月數據表.astype(float)
+    
+    # 動態推論所有外部特徵名稱
+    外部數據名稱 = X_原始矩陣.columns.tolist()
+    
+    if len(外部數據名稱) == 0:
+        raise ValueError("傳入的 外部月數據表 沒有任何特徵欄位！")
+        
+    # 設定月度模型的滾動回測月數（通常設定為 12 個月，即完整回測一整年）
+    回測月數 = 12
+
+    # =====================================================================
+    # 🎯 3. 定義 Optuna 最佳化目標函數 (以 AIC 為核心，完全基於月頻率)
+    # =====================================================================
+    def objective(trial):
+        # 參數 1：特徵的時間滯後效應（單位：月，搜尋 0 ~ 6 個月）
+        lag = trial.suggest_int('lag_months', 0, 6)
+        
+        # 參數 2：歷史記憶視窗（月數據點較多，設定至少 24 個月）
+        min_window = 24  
+        max_window = len(歷月值) - 回測月數 - lag
+        if max_window <= min_window:
+            window_size = min_window
+        else:
+            window_size = trial.suggest_int('window_size', min_window, max_window)
+            
+        # 參數 3：Newey-West 殘差修正滯後階數（月數據設定 3 ~ 6 個月較能修正自相關）
+        maxlags = trial.suggest_int('maxlags', 3, 6)
+
+        # 依據選定的滯後階數進行特徵位移
+        X_滯後矩陣 = X_原始矩陣.shift(lag)
+        聯集資料 = pd.concat([歷月值, X_滯後矩陣], axis=1).dropna()
+        
+        if len(聯集資料) <= 回測月數 + 12:
+            return float('inf')
+
+        y_全 = 聯集資料[歷月值.name if 歷月值.name else 預估目標]
+        X_全 = 聯集資料[外部數據名稱]
+        X_全_含常數 = sm.add_constant(X_全)
+
+        單步回測值 = []
+        累加_aic = 0.0
+        有效回測步數 = 0
+        
+        # 執行月度滾動盲測
+        for i in range(回測月數):
+            全資料當前終點 = len(聯集資料) - 回測月數 + i
+            訓練起點 = max(0, 全資料當前終點 - window_size)
+            
+            X_訓練 = X_全_含常數.iloc[訓練起點:全資料當前終點]
+            y_訓練 = y_全.iloc[訓練起點:全資料當前終點]
+            X_測試 = X_全_含常數.iloc[[全資料當前終點]]
+            
+            try:
+                模型 = sm.OLS(y_訓練, X_訓練).fit(cov_type='HAC', cov_kwds={'maxlags': maxlags})
+                單月預測 = 模型.predict(X_測試)
+                單步回測值.append(單季預測.values[0] if '單季預測' in locals() else 單月預測.values[0])
+                
+                累加_aic += 模型.aic
+                有效回測步數 += 1
+            except:
+                return float('inf')
+                
+        if 有效回測步數 == 0:
+            return float('inf')
+
+        評估_aic = 累加_aic / 有效回測步數
+        
+        # 計算隨附的盲測驗證指標
+        真實值 = y_全.iloc[-回測月數:]
+        回測值_陣列 = np.array(單步回測值)
+        
+        評估_mape = np.mean(np.abs((真實值 - 回測值_陣列) / 真實值))
+        評估_rmse = np.sqrt(mean_squared_error(真實值, 回測值_陣列))
+        
+        trial.set_user_attr("mape", float(評估_mape))
+        trial.set_user_attr("rmse", float(評估_rmse))
+        
+        return 評估_aic
+
+    # =====================================================================
+    # 🚀 4. 啟動 Optuna 最小化 AIC
+    # =====================================================================
+    研究工廠 = optuna.create_study(direction='minimize')
+    研究工廠.optimize(objective, n_trials=30)
+    
+    最佳參數 = 研究工廠.best_params
+    最佳滯後 = 最佳參數['lag_months']
+    最佳視窗 = 最佳參數.get('window_size', len(歷月值) - 回測月數 - 最佳滯後)
+    最佳殘差階數 = 最佳參數['maxlags']
+
+    # 5. 使用最優超參數重新建立歷史底稿
+    X_最佳滯後矩陣 = X_原始矩陣.shift(最佳滯後)
+    最終聯集資料 = pd.concat([歷月值, X_最佳滯後矩陣], axis=1).ffill().bfill()
+    
+    y_歷史 = 最終聯集資料.loc[歷月值.index, 歷月值.name if 歷月值.name else 預估目標]
+    X_歷史 = 最終聯集資料.loc[歷月值.index, 外部數據名稱]
+    X_歷史_含常數 = sm.add_constant(X_歷史)
+
+    # 6. 從最優實驗提取元數據
+    最佳實驗 = 研究工廠.best_trial
+    mape = 最佳實驗.user_attrs.get("mape", 0.0)
+    rmse = 最佳實驗.user_attrs.get("rmse", 0.0)
+
+    # =====================================================================
+    # 📈 7. 自動動態識別預測時間軸與計算同比（YoY）
+    # =====================================================================
+    最近月份 = 歷月值.index[-1]
+    from zhongwen.時 import 今年數
+    次年數 = 今年數 + 1
+    
+    未來下一月 = 最近月份 + 1
+    次年底最後一月 = pd.Period(f"{次年數}-12", freq='M')
+    未來月時軸 = pd.period_range(start=未來下一月, end=次年底最後一月, freq='M')
+
+    # 計算：最近歷史值同比 (YoY) -> 分母加 abs() 以防營利為負數
+    最近歷史月去年同月 = 最近月份 - 12
+    if 最近歷史月去年同月 in y_歷史.index and y_歷史.loc[虧損或零值檢查 := 最近歷史月去年同月] != 0:
+        最近歷史值同比 = (y_歷史.loc[最近月份] - y_歷史.loc[最近歷史月去年同月]) / abs(y_歷史.loc[最近歷史月去年同月])
+    else:
+        最近歷史值同比 = np.nan
+
+    # 8. 擬合最終預測模型
+    最終訓練起點 = max(0, len(y_歷史) - 最佳視窗)
+    X_最終訓練 = X_歷史_含常數.iloc[最終訓練起點:]
+    y_最終訓練 = y_歷史.iloc[最終訓練起點:]
+    
+    最終預測模型 = sm.OLS(y_最終訓練, X_最終訓練).fit(cov_type='HAC', cov_kwds={'maxlags': 最佳殘差階數})
+    
+    # 提取未來的外部月特徵數據並預測
+    X_未來 = 最終聯集資料.loc[未來月時軸, 外部數據名稱]
+    X_未來_含常數 = sm.add_constant(X_未來, has_constant='add')
+    預估各月_陣列 = 最終預測模型.predict(X_未來_含常數)
+
+    # 9. 整合並封裝「預估各月值」
+    預估目標全序列 = pd.concat([y_歷史, 預估各月_陣列])
+    
+    # 計算：首期預估值同比 (YoY) -> 分母加 abs() 以防營利為負數
+    首期預估月份 = 未來月時軸[0]
+    首期預估去年同月 = 首期預估月份 - 12
+    if 首期預估去年同月 in 預估目標全序列.index and 預估目標全序列.loc[首期預估去年同月] != 0:
+        首期預估值同比 = (預估目標全序列.loc[首期預估月份] - 預估目標全序列.loc[首期預估去年同月]) / abs(預估目標全序列.loc[首期預估去年同月])
+    else:
+        首期預估值同比 = np.nan
+
+    # =====================================================================
+    # 📦 10. 重新包裝傳回結果 Series
+    # =====================================================================
+    預測結果 = pd.Series({
+        "預估各月值": 預估目標全序列,
+        "rmse": rmse,
+        "mape": mape,
+        "歷史值數量": len(y_歷史),
+        "預估值數量": len(預估各月_陣列),
+        "回測資料數": 回測月數,
+        "模型名稱": "以 HAC 調整共變數之 OLS (純月度模型)",
+        "模型參數": 最佳參數,
+        "最近歷史值時間": 最近月份,
+        "最後預估值時間": 次年底最後一月,
+        "最近歷史值同比": 最近歷史值同比,
+        "首期預估值同比": 首期預估值同比
+    })
+    return 預測結果
+
