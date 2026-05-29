@@ -129,6 +129,9 @@ def 以鉛價預測次年每股盈餘(股票, 歷月營收表=None):
     import pandas as pd
     公司代號 = 查股票代號(股票)
     公司簡稱 = 查股票簡稱(股票)
+    if 公司簡稱 not in 毛利受鉛價影響者:
+        from twse_crawler.股利分析 import 無法預估盈餘
+        raise 無法預估盈餘(f'鉛價不影響{股票}之毛利率！')
 
     歷季損益表 = 取損益表(公司代號)
     歷季損益表['營收'] = 歷季損益表.營收.fillna(0)
@@ -147,6 +150,7 @@ def 以鉛價預測次年每股盈餘(股票, 歷月營收表=None):
     except AttributeError:
         歷季損益表['財報日期'] = 歷季損益表.index
     # 預測營收
+    from twse_crawler.營收分析 import 預測次年底營收
     預測營收結果 = 預測次年底營收(股票)
     預測營收 = 預測營收結果.預估每季總值.預估每季營收
     future_index = 預測營收.index[預測營收.index > 歷季損益表.index.max()]
