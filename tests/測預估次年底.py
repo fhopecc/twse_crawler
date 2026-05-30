@@ -10,12 +10,15 @@ class Test(unittest.TestCase):
         from zhongwen.表 import 表示
         from twse_crawler.鉛價分析 import 取鉛價
         from twse_crawler.財報分析 import 取財報彙總表
+        from twse_crawler.營收分析 import 以營收預測次年每股盈餘
         from twse_crawler.鉛價分析 import 以鉛價預測次年每股盈餘, cache
         from twse_crawler.營收分析 import 取歷月營收表
+        from zhongwen import 快取
         import pandas as pd
+        快取.停止快取 = True
         cache.clear() 
-        股票 = '泰銘'
-        r = 以鉛價預測次年每股盈餘(股票)
+        股票 = '新麥'
+        r = 以營收預測次年每股盈餘(股票)
         表示(r, 顯示索引=True)
 
         self.assertFalse(True)

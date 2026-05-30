@@ -308,6 +308,6 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     # cache.clear()
     # 更新財報與自結損益及營收暨股利和行情()
-    zhongwen.快取.停止快取=True
+    # zhongwen.快取.停止快取=True
     顯示股票評級彙總表(0.05)
     # 列出函數執行時間表()
