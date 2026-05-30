@@ -8,10 +8,11 @@ class Test(unittest.TestCase):
         from twse_crawler.股票評級 import 取淨利成長領先指標
         from twse_crawler.股票評級 import 取營利成長領先指標, 取業外成長領先指標
         from twse_crawler.股票評級 import cache as acache
-        from 股票分析.人工分析 import cache as bcache
+        from twse_crawler.自結損益 import cache as bcache
+        from 股票分析.人工分析 import cache as dcache
         from zhongwen.表 import 表示
         import zhongwen.快取
-        # bcache.clear()
+        bcache.clear()
         zhongwen.快取.停止快取=True
         r = 評級股票('豐興', 告示例外=False)
         表示(r)
