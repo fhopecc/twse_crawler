@@ -10,7 +10,7 @@ class Test(unittest.TestCase):
         from twse_crawler.自結損益 import 以自結損益預測次年每股盈餘
         from zhongwen.表 import 數據不足, 表示
 
-        r = 以自結損益預測次年每股盈餘('泰銘')
+        r = 以自結損益預測次年每股盈餘('豐興')
         表示(r, 顯示索引=True, 顯示筆數=1000)
         self.assertTrue(False)
         self.assertEqual(len(r), 2)

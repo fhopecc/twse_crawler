@@ -13,7 +13,7 @@ class Test(unittest.TestCase):
         import zhongwen.快取
         # bcache.clear()
         zhongwen.快取.停止快取=True
-        r = 評級股票('一零四')
+        r = 評級股票('豐興', 告示例外=False)
         表示(r)
         self.assertFalse(True)
 

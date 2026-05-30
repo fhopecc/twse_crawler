@@ -11,6 +11,25 @@ cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 
 class Test(unittest.TestCase):
 
+    def test(self):
+        from twse_crawler.股票基本資料分析 import 查股票代號
+        from twse_crawler.股利分析 import 取股利表, 取除權息概述, cache
+        from twse_crawler.股利分派情形爬蟲 import 抓取股利分派情形彙總表
+        from twse_crawler.股利分析 import 預測股利, 取上年度股利及說明
+        from zhongwen.時 import 今日, 上年度
+        from zhongwen.表 import 表示
+        # cache.clear()
+        # d, r = 取上年度股利及說明('中菲')
+        # print(d)
+        # print(r) 
+        # 富林二千廿四年股利 = df.query(
+            # '公司代號==@查股票代號("富林-KY") and 股利所屬年度.dt.year==2024').iloc[-1]
+        # r = 取除權息概述('泰山')
+        r = 預測股利('樂士綠能')
+        表示(r)
+        # self.assertEqual(r, m)
+
+
     def test預測配息率(self):
         from 股票分析.股利分析 import 預測配息率
         from zhongwen.表 import 顯示
@@ -168,27 +187,10 @@ class Test(unittest.TestCase):
         h = 取歷年股利表()
         顯示(h)
 
-    def test取除權息概述(self):
-        from twse_crawler.股票基本資料分析 import 查股票代號
-        from twse_crawler.股利分析 import 取股利表, 取除權息概述, cache
-        from twse_crawler.股利分派情形爬蟲 import 抓取股利分派情形彙總表
-        from twse_crawler.股利分析 import 預測股利, 取上年度股利及說明
-        from zhongwen.時 import 今日, 上年度
-        from zhongwen.表 import 表示
-        cache.clear()
-        # d, r = 取上年度股利及說明('中菲')
-        # print(d)
-        # print(r) 
-        # 富林二千廿四年股利 = df.query(
-            # '公司代號==@查股票代號("富林-KY") and 股利所屬年度.dt.year==2024').iloc[-1]
-        # r = 取除權息概述('泰山')
-        r = 預測股利('樂士綠能')
-        表示(r)
-        # self.assertEqual(r, m)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     # unittest.main()
     suite = unittest.TestSuite()
-    suite.addTest(Test('test取除權息概述'))
+    suite.addTest(Test('test'))
     unittest.TextTestRunner().run(suite)
