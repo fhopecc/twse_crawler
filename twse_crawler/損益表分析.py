@@ -99,7 +99,7 @@ def 取損益表(股票=None, 個體報表=False):
     六、依累季前後期數據差異推算單季數據。
     七、亦能指定「個體報表」選項傳回個體損益表。
     八、以淨利除以每股盈餘設算「股數」。
-    九、傳回指定股票之損益表，其索引設為財報季度。
+    九、指定個股之損益表依財報季度排序及索引。
     '''
     from twse_crawler.股票基本資料分析 import 查股票代號
     from twse_crawler.現流表分析 import 取單期淨額
@@ -112,6 +112,7 @@ def 取損益表(股票=None, 個體報表=False):
         h = 取損益表(個體報表=個體報表)
         h = h.query('股票代號==@股票代號')
         h = h.set_index(h.財報日期.dt.to_period('Q')).rename_axis('財報季度')
+        h = h.sort_index()
         return h
 
     df = 取累積損益表()
@@ -129,8 +130,8 @@ def 取損益表(股票=None, 個體報表=False):
     df = df.query('頻率=="Q-DEC"')
 
     df['營收'] = df.營收.fillna(df['淨收益']) # 金控
-    df['營收'] = df.營收.fillna(df.收益合計) # 統一證等
-    df['營收'] = df.營收.fillna(df.收入合計) # 新纖等
+    df['營收'] = df.營收.fillna(df.收益合計)  # 統一證等
+    df['營收'] = df.營收.fillna(df.收入合計)  # 新纖等
     df['營利'] = df.營利.fillna(df['營業利益'])
     df['稅前淨利'] = df.稅前淨利.fillna(df['繼續營業單位稅前淨利（淨損）'])
     df['淨利'] = df['母公司淨利'].fillna(df.淨利).fillna(df['本期稅後淨利（淨損）'])
@@ -415,3 +416,28 @@ def 分析營收(股票):
     r['說明'] = msg
     return r
 
+損益表分析快取 = Index(str(Path.home() / '.twse_crawler' / '快取' / '損益表分析結果快取檔'))
+
+@通知執行時間
+def 預估業外損益(股票):
+    '''
+    一、以公司已公布各季財報業外損益預估至次年底各季業外損益。
+    二、傳回預估每月值、預估每季總值、預估方法說明及預估說明。
+    三、歷季損益表最近財報季度大於快取最近歷史值時間始更新。 
+    '''
+    from twse_crawler.預估次年底 import 預估至次年底每季值
+    from twse_crawler.預估次年底 import 表達預估方法, 表達預估說明
+    from zhongwen.表 import 表示
+    h = 取損益表(股票)
+    ck = f'預估業外損益({股票})'
+    try:
+        c = 損益表分析快取[ck]
+        if c.最近歷史值時間 >= h.index.max():
+            return c
+    except KeyError: pass
+    h = h.業外損益
+    p = 預估至次年底每季值(h)
+    p['預估說明'] = 表達預估說明(p, '業外損益')
+    p['預估方法說明'] = 表達預估方法(p, '業外損益')
+    損益表分析快取[ck] = p
+    return p

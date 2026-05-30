@@ -71,7 +71,10 @@ def 載入近一季重大訊息(股票=None):
             warnings.warn(f'{股票簡稱}無近一季重大訊息') 
         return df
 
-    爬取近一週重大訊息()
+    try:
+        爬取近一週重大訊息()
+    except Exception as e:
+        logger.error(f'爬取近一週重大訊息失敗，主要係發生{e}！')
 
     日期欄位=['發言日期', '歸屬日期']
     with sqlite3.connect(重大訊息庫) as c:
@@ -184,8 +187,8 @@ def 取財務報告數值(重訊資料):
             s['財報類型'] = '個別'
         財務報告數值快取檔[公司代號] = s
         return s
-    except ValueError as e:
-        logger.error(f'抓取{公司代號}公告財務報表資訊發生錯誤：{e}')
+    except (ValueError, AttributeError) as e:
+        logger.error(f'抓取{公司代號}公告重大訊息財務報表資訊發生錯誤：{e}')
         for k in 公告財務報告表欄位:
             s[k] = np.nan
         return s
@@ -199,6 +202,7 @@ def 探勘公告財務報告表():
     '目前僅實作探勘本季重大訊息'
     from twse_crawler.重大訊息分析 import 載入近一季重大訊息
     from zhongwen.時 import 季初
+    from zhongwen.表 import 表示
     df = 載入近一季重大訊息()
     df = df.query('發言日期>@季初')
     df = df.query('詳細資料.str.contains("otc|sii")')
@@ -206,6 +210,7 @@ def 探勘公告財務報告表():
     pat = ".*通過.*(第.*季|年度|年).*財務報(告|表).*|.*(第.*季|年度|年).*財務報(告|表).*通過"
     df = df.query(f'主旨.str.contains("{pat}")')
     df = df.query('not 主旨.str.contains("召開|預計|更正")')
+    表示(df)
     df = df.apply(取財務報告數值, axis='columns')
     df = df.loc[df.groupby('公司代號')['發言日期'].idxmax()]
     df = df.reset_index(drop=True)
