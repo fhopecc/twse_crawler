@@ -15,13 +15,13 @@ def 抓取近一週上市櫃收盤行情():
     from twse_crawler.櫃買中心爬蟲 import 抓取上櫃股票行情
     from zhongwen.表 import 顯示
     import pandas as pd
-    d = 一週前
-    while d <= 最近工作日: 
+    d = 最近工作日
+    while d >= 一週前: 
         if 是工作日(d):
             logger.info(f'抓取{取正式民國日期(d)}收盤行情')
             抓取上市每日收盤行情(d)
             抓取上櫃股票行情(d)
-        d += 一日
+        d -= 一日
 
 @functools.cache
 @通知執行時間
@@ -327,7 +327,8 @@ def 預測報酬率(股票, 重新分析=False):
     return 預測結果
 
 if __name__ == '__main__':
-    r = 數值計算股票內部報酬率(1090, [0, 33.4, 36.71])
-    print(r)
-    v = 取現價(0.03, [0, 33.4, 36.71])
-    print(v)
+    # r = 數值計算股票內部報酬率(1090, [0, 33.4, 36.71])
+    # print(r)
+    # v = 取現價(0.03, [0, 33.4, 36.71])
+    # print(v)
+    cache.clear()
