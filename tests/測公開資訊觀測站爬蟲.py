@@ -10,10 +10,12 @@ class Test(unittest.TestCase):
         from twse_crawler.公開資訊觀測站爬蟲 import 抓取月自結損益彙總表
         from zhongwen.表 import 表示
         import pandas as pd
-        df = 抓取月自結損益彙總表('11502')
-        表示(df)
+        from twse_crawler.營收分析 import 取歷月營收表
+        df = 取歷月營收表()
+        print(df.營收月份.max())
         self.assertFalse(True)
         df = 抓取月營收彙總表(pd.Period('2026-02'))
+        df = 抓取月自結損益彙總表('11502')
         from 股票分析.公開資訊觀測站爬蟲 import 抓取公司股利分派公告資料彙總表
         from zhongwen.表 import 顯示 
         from zhongwen.時 import 今日 

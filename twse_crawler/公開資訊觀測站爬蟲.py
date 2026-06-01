@@ -68,6 +68,7 @@ def 抓取月營收彙總表(營收月份):
     from zhongwen.時 import 取日期, 取期間, 取民國年月
     from zhongwen.檔 import 抓取
     import pandas as pd
+    營收月份 = 取期間(營收月份)
     logger.info(f'抓取{取民國年月(營收月份)}營收彙總表……')
     民國年數 = 營收月份.year - 1911
     月數 = 營收月份.month

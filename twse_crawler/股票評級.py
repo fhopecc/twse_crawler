@@ -255,8 +255,6 @@ def 顯示股票評級彙總表(報酬率下限=0):
     標題 = '股票估值榜'
     張貼錢商品錢(標題, 內容, 標籤=['估計股利指標', '股票榜', '股利趨勢指標'])
 
-@functools.cache
-@cache.memoize('更新財報與自結損益及營收暨股利和行情', expire=24*60*60)
 def 更新財報與自結損益及營收暨股利和行情():
     '''
     一、證交所規定上市公司公告申報財務報表之期限如下：
@@ -279,14 +277,38 @@ def 更新財報與自結損益及營收暨股利和行情():
     from twse_crawler.營收分析 import cache as fcache
     from twse_crawler.自結損益 import cache as gcache
     from twse_crawler.行情分析 import cache as hcache
-    acache.clear()
-    bcache.clear()
-    ccache.clear()
-    dcache.clear()
-    ecache.clear()
-    fcache.clear()
-    gcache.clear()
-    hcache.clear()
+    from zhongwen.時 import 本月
+    from zhongwen.表 import 表示
+    
+    # 更新月營收
+    from twse_crawler.營收分析 import 取歷月營收表, cache
+    from twse_crawler.公開資訊觀測站爬蟲 import 抓取月營收彙總表
+    cache.clear()
+    df = 取歷月營收表()
+    df = df.groupby('公司代號').agg(營收月份=('營收月份', 'max'))
+    df['距今月數'] = df.營收月份.map(lambda m: (本月 - m).n)
+    df = df.query('not 距今月數>4')
+    for lag_mon in range(2, 5):
+        df_lag = df.query('距今月數==@lag_mon')
+        if not df_lag.empty:
+            表示(df_lag, 顯示索引=True)
+            抓取月營收彙總表(本月-lag_mon+1)
+
+    # 更新月自結損益
+    from twse_crawler.自結損益 import 取自結損益表, cache
+    from twse_crawler.公開資訊觀測站爬蟲 import 抓取月自結損益彙總表
+    cache.clear()
+    df = 取自結損益表()
+    df = df.groupby('公司代號').agg(自結損益月份=('自結損益月份', 'max'))
+    df['距今月數'] = df.自結損益月份.map(lambda m: (本月 - m).n)
+    df = df.query('not 距今月數>4')
+    for lag_mon in range(2, 5):
+        df_lag = df.query('距今月數==@lag_mon')
+        if not df_lag.empty:
+            表示(df_lag, 顯示索引=True)
+            抓取月自結損益彙總表(本月-lag_mon+1)
+    return
+
     季數 = 上季.quarter
     match 季數: 
         case 2:
@@ -307,7 +329,7 @@ if __name__ == '__main__':
     logging.getLogger('googleapiclient').setLevel(logging.CRITICAL)
     logging.basicConfig(level=logging.INFO)
     # cache.clear()
-    # 更新財報與自結損益及營收暨股利和行情()
+    更新財報與自結損益及營收暨股利和行情()
     # zhongwen.快取.停止快取=True
-    顯示股票評級彙總表(0.05)
+    # 顯示股票評級彙總表(0.05)
     # 列出函數執行時間表()
