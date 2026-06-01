@@ -286,8 +286,7 @@ def 蒐整財務資訊():
     from zhongwen.時 import 本季, 上季
     cache.clear()
     季數 = 上季.quarter
-    df = 取損益表()
-    表示(df.tail(10))
+    df = 取資產負債表()
     df = df.groupby('股票代號').agg(財報季度=('財報季度', 'max'))
     df['距今季數'] = df.財報季度.map(lambda q: (本季 - q).n)
     df = df.query('not 距今季數>3')
@@ -301,7 +300,7 @@ def 蒐整財務資訊():
             from twse_crawler.財報爬蟲 import 爬取資產負債表
             from twse_crawler.財報爬蟲 import 爬取損益表
             from twse_crawler.財報爬蟲 import 爬取現流表
-            應更新季度 =  本季 - lag_quarter
+            應更新季度 =  本季 - lag_quarter + 1
             logger.info(f'下載{取民國季度(應更新季度)}財報')
             下載季報包(*季別(應更新季度), 重新下載=True)
             logger.info(f'爬取{取民國季度(應更新季度)}資產負債表')

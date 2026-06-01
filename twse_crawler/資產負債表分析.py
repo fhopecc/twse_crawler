@@ -104,6 +104,7 @@ def 分析負債(股票):
     三、結果項目：分數、評語。
     '''
     import pandas as pd
+    from zhongwen.表 import 表示
     c = 本期資產負債表 = 取資產負債表(股票).iloc[-1]
     存貨 = c.存貨 if pd.notna(c.存貨) else 0
     負債比率 = c.負債總計 / c.負債及權益總計
