@@ -109,6 +109,7 @@ def 取現流表(股票=None, 個體報表=False):
     # df = df.groupby(['股票代號']).apply(取單期淨額).reset_index(level=0)
     df = df.groupby(['股票代號'], group_keys=False).apply(取單期淨額)
     df = df.query('頻率=="Q-DEC"')
+    df['財報季度'] = df.財報日期.dt.to_period('Q')
     return df
 
 def 取移動年度加總(季數據):

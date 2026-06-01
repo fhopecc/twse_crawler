@@ -255,7 +255,7 @@ def 顯示股票評級彙總表(報酬率下限=0):
     標題 = '股票估值榜'
     張貼錢商品錢(標題, 內容, 標籤=['估計股利指標', '股票榜', '股利趨勢指標'])
 
-def 更新財報與自結損益及營收暨股利和行情():
+def 蒐整財務資訊():
     '''
     一、證交所規定上市公司公告申報財務報表之期限如下：
         1.年度財務報告：每會計年度終了後3個月內(3/31前)。
@@ -269,7 +269,6 @@ def 更新財報與自結損益及營收暨股利和行情():
     '''
     from zhongwen.時 import 今日, 上季, 取季別年數季數, 取日期
     from datetime import timedelta
-    from twse_crawler.財報分析 import cache as acache
     from twse_crawler.損益表分析 import cache as bcache
     from twse_crawler.資產負債表分析 import cache as ccache
     from twse_crawler.財報爬蟲 import 爬取上季財報, dcache
@@ -277,12 +276,45 @@ def 更新財報與自結損益及營收暨股利和行情():
     from twse_crawler.營收分析 import cache as fcache
     from twse_crawler.自結損益 import cache as gcache
     from twse_crawler.行情分析 import cache as hcache
-    from zhongwen.時 import 本月
     from zhongwen.表 import 表示
+
+    # 更新財報收據
+    from twse_crawler.資產負債表分析 import 取資產負債表, cache
+    from twse_crawler.損益表分析 import 取損益表, cache
+    from twse_crawler.現流表分析 import 取現流表
+    from twse_crawler.財報爬蟲 import 爬取上季財報 
+    from zhongwen.時 import 本季, 上季
+    cache.clear()
+    季數 = 上季.quarter
+    df = 取損益表()
+    表示(df.tail(10))
+    df = df.groupby('股票代號').agg(財報季度=('財報季度', 'max'))
+    df['距今季數'] = df.財報季度.map(lambda q: (本季 - q).n)
+    df = df.query('not 距今季數>3')
+    for lag_quarter in range(2, 5):
+        df_lag = df.query('距今季數==@lag_quarter')
+        if not df_lag.empty:
+            表示(df_lag, 顯示索引=True)
+            from zhongwen.date import 季別
+            from zhongwen.時 import 取民國季度
+            from twse_crawler.財報爬蟲 import 下載季報包
+            from twse_crawler.財報爬蟲 import 爬取資產負債表
+            from twse_crawler.財報爬蟲 import 爬取損益表
+            from twse_crawler.財報爬蟲 import 爬取現流表
+            應更新季度 =  本季 - lag_quarter
+            logger.info(f'下載{取民國季度(應更新季度)}財報')
+            下載季報包(*季別(應更新季度), 重新下載=True)
+            logger.info(f'爬取{取民國季度(應更新季度)}資產負債表')
+            爬取資產負債表(應更新季度)
+            logger.info(f'爬取{取民國季度(應更新季度)}損益表')
+            爬取損益表(應更新季度)
+            logger.info(f'爬取{取民國季度(應更新季度)}現流表')
+            爬取現流表(應更新季度)
     
     # 更新月營收
-    from twse_crawler.營收分析 import 取歷月營收表, cache
     from twse_crawler.公開資訊觀測站爬蟲 import 抓取月營收彙總表
+    from twse_crawler.營收分析 import 取歷月營收表, cache
+    from zhongwen.時 import 本月
     cache.clear()
     df = 取歷月營收表()
     df = df.groupby('公司代號').agg(營收月份=('營收月份', 'max'))
@@ -295,8 +327,8 @@ def 更新財報與自結損益及營收暨股利和行情():
             抓取月營收彙總表(本月-lag_mon+1)
 
     # 更新月自結損益
-    from twse_crawler.自結損益 import 取自結損益表, cache
     from twse_crawler.公開資訊觀測站爬蟲 import 抓取月自結損益彙總表
+    from twse_crawler.自結損益 import 取自結損益表, cache
     cache.clear()
     df = 取自結損益表()
     df = df.groupby('公司代號').agg(自結損益月份=('自結損益月份', 'max'))
@@ -307,19 +339,6 @@ def 更新財報與自結損益及營收暨股利和行情():
         if not df_lag.empty:
             表示(df_lag, 顯示索引=True)
             抓取月自結損益彙總表(本月-lag_mon+1)
-    return
-
-    季數 = 上季.quarter
-    match 季數: 
-        case 2:
-            if 上季.end_time < 今日 <= 取日期(f'{上季.year}.9.5'):
-                爬取上季財報()
-        case 4:
-            if 上季.end_time < 今日 <= 取日期(f'{上季.year+1}.4.5'):
-                爬取上季財報()
-        case _:
-            if 上季.end_time < 今日 <= 上季.end_time + timedelta(days=65):
-                爬取上季財報()
 
 if __name__ == '__main__':
     from zhongwen.程式 import 列出函數執行時間表
@@ -329,7 +348,7 @@ if __name__ == '__main__':
     logging.getLogger('googleapiclient').setLevel(logging.CRITICAL)
     logging.basicConfig(level=logging.INFO)
     # cache.clear()
-    更新財報與自結損益及營收暨股利和行情()
+    蒐整財務資訊()
     # zhongwen.快取.停止快取=True
     # 顯示股票評級彙總表(0.05)
     # 列出函數執行時間表()

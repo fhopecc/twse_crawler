@@ -150,6 +150,7 @@ def 取損益表(股票=None, 個體報表=False):
     df['淨利率'] = df.淨利/df.營收
     df['營利率'] = df.營利率.fillna(df.稅前淨利率)
     df['營收'] = df.營收.fillna(0)
+    df['財報季度'] = df.財報日期.dt.to_period('Q')
     return df
 
 @functools.cache

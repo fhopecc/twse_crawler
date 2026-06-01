@@ -9,9 +9,9 @@ class Test(unittest.TestCase):
     def test(self):
         from twse_crawler.資產負債表分析 import 分析骯髒科目, 分析負債
         from twse_crawler.資產負債表分析 import 分析客戶保證金
-        from zhongwen.表 import 顯示
-        df = 分析負債('鈊象')
-        顯示(df)
+        from zhongwen.表 import 顯示, 表示
+        df = 分析負債('一零四')
+        表示(df)
 
         self.assertTrue(False)
 
