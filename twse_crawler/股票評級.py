@@ -347,7 +347,7 @@ if __name__ == '__main__':
     logging.getLogger('googleapiclient').setLevel(logging.CRITICAL)
     logging.basicConfig(level=logging.INFO)
     # cache.clear()
-    蒐整財務資訊()
+    # 蒐整財務資訊()
     # zhongwen.快取.停止快取=True
     # 顯示股票評級彙總表(0.05)
     # 列出函數執行時間表()
