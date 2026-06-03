@@ -210,7 +210,6 @@ def 探勘公告財務報告表():
     pat = ".*通過.*(第.*季|年度|年).*財務報(告|表).*|.*(第.*季|年度|年).*財務報(告|表).*通過"
     df = df.query(f'主旨.str.contains("{pat}")')
     df = df.query('not 主旨.str.contains("召開|預計|更正")')
-    表示(df)
     df = df.apply(取財務報告數值, axis='columns')
     df = df.loc[df.groupby('公司代號')['發言日期'].idxmax()]
     df = df.reset_index(drop=True)
