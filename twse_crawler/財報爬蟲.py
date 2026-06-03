@@ -206,7 +206,7 @@ def 下載季報包(年或年季=None, 季=None, 重新下載=False, 覆寫=Fals
                 q = z.stem[-6:]
                 if 重新下載 or sum(1 for _ in 存放區.glob(f'*{指定季度}*'))+10 < (sum(1 for _ in 存放區.glob(f'*{指定季度-2}*'))):
                     解壓(z, 存放區)
-                    logger.info(f"解壓{list(存放區.glob(f'*{指定季度}*'))}")
+                    logger.info(f"共計解壓{len(list(存放區.glob(f'*{指定季度}*')))}個檔案")
                 else:
                     logger.info(f'{z.name}己解壓！')
 

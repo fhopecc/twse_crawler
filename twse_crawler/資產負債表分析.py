@@ -28,7 +28,7 @@ def 取資產負債表(股票=None, 個體報表=False):
     from twse_crawler.損益表分析 import 取近年損益表
     from twse_crawler.現流表分析 import 取近年現流表
     from zhongwen.庫 import 批次載入
-    from zhongwen.表 import 顯示
+    from zhongwen.表 import 表示
 
     if 股票:
         股票代號 = 查股票代號(股票)
