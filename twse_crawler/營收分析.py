@@ -522,6 +522,7 @@ def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
     from zhongwen.數 import 取最簡約數
     from zhongwen.文 import 臚列
     import pandas as pd
+    import zhongwen
     公司代號 = 查股票代號(股票)
     公司簡稱 = 查股票簡稱(股票)
     
@@ -536,7 +537,7 @@ def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
     # 快取判斷
     try:
         c = 營收分析快取[f'以營收預測次年每股盈餘預({股票})']
-        if not 停止快取 and (c.最近營收月份 >= 最近營收月份 or c.最近財報季度 >= 最近財報季度):
+        if not zhongwen.快取.停止快取 and (c.最近營收月份 >= 最近營收月份 or c.最近財報季度 >= 最近財報季度):
             return c
     except KeyError: pass
 

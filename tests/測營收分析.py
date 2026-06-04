@@ -13,7 +13,7 @@ class Test(unittest.TestCase):
         import zhongwen.快取 as 快取
         快取.停止快取 = True
         cache.clear()
-        s = 以營收預測稅前淨利及次年每股盈餘('樂士綠能')
+        s = 以營收預測稅前淨利及次年每股盈餘('6405')
         print(s.預估說明)
         print(s.預估方法說明)
         self.assertFalse(True)

@@ -205,8 +205,15 @@ def 顯示股票評級彙總表(報酬率下限=0):
     from fhopecc.洄瀾打狗人札記 import 張貼錢商品錢
     from zhongwen.文 import 轉樣式表字串
     from zhongwen.表 import 顯示, 重名加序
+    
     import pandas as pd
     df = 取股票評級彙總表()
+    json = r'd:\github\investment_report\investment_report.json'
+    if not Path(json).exists():
+        json = r'c:\github\investment_report\investment_report.json'
+    df.to_json(json, orient='table', force_ascii=False, indent=4)
+    import 股票分析
+    股票分析.投資績效.更新在線投資績效明細()
     df.columns = 重名加序(df.columns)
     顯示欄位 = ['公司簡稱', '分數', '總分'
                ,'報酬率', '產業類別', '護城河分數', '預測報酬率說明'
@@ -262,7 +269,7 @@ if __name__ == '__main__':
     import logging
     logging.getLogger('googleapiclient').setLevel(logging.CRITICAL)
     logging.basicConfig(level=logging.INFO)
-    cache.clear()
-    zhongwen.快取.停止快取=True
+    # cache.clear()
+    # zhongwen.快取.停止快取=True
     顯示股票評級彙總表(0.05)
     # 列出函數執行時間表()

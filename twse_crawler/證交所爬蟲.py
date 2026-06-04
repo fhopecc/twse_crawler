@@ -151,3 +151,20 @@ def 抓上市公司基本資料():
     url = 'https://openapi.twse.com.tw/v1/opendata/t187ap03_L'
     json = 抓取(url, 回傳資料形態='json')
     return pd.DataFrame(json)
+
+def 抓取終止上市公司():
+    import pandas as pd
+    from zhongwen.檔 import 抓取
+    from zhongwen.表 import 表示
+    csv_url = "https://www.twse.com.tw/zh/dataset/suspendListingCSV"
+
+    # 直接用 pandas 讀取網路上的 CSV
+    s = 抓取(csv_url)
+    表示(s) 
+    sio = 抓取(csv_url, 回傳資料形態="StringIO")
+    df = pd.read_csv(sio, encoding="utf-8")
+
+    # 修正欄位名稱（有時官方欄位會有空格，例如 " 公司代號 "）
+    df.columns = df.columns.str.strip()
+
+    return df
