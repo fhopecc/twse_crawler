@@ -79,3 +79,14 @@ def 抓上櫃股票基本資料():
     print(type(json[0]['TitleOfSpokesman']))
     # print(pd.DataFrame(json))
     return pd.DataFrame(json)
+
+def 抓變更交易上櫃公司():
+    '''
+    一、出表日期、公司代號、公司名稱、變更交易開始日。
+    '''
+    from zhongwen.檔 import 抓取
+    import pandas as pd
+    csv_url = 'https://www.tpex.org.tw/www/zh-tw/api/mopsfin?type=t187ap27_O&response=csv'
+    sio = 抓取(csv_url, 回傳資料形態="StringIO")
+    df = pd.read_csv(sio)
+    return df

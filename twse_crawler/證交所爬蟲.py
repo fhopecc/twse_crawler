@@ -153,18 +153,28 @@ def 抓上市公司基本資料():
     return pd.DataFrame(json)
 
 def 抓取終止上市公司():
+    '''
+    一、欄位：上市編號、終止上市日期。
+    '''
     import pandas as pd
+    from zhongwen.時 import 取日期
     from zhongwen.檔 import 抓取
     from zhongwen.表 import 表示
-    csv_url = "https://www.twse.com.tw/zh/dataset/suspendListingCSV"
-
-    # 直接用 pandas 讀取網路上的 CSV
-    s = 抓取(csv_url)
-    表示(s) 
-    sio = 抓取(csv_url, 回傳資料形態="StringIO")
-    df = pd.read_csv(sio, encoding="utf-8")
-
-    # 修正欄位名稱（有時官方欄位會有空格，例如 " 公司代號 "）
-    df.columns = df.columns.str.strip()
-
-    return df
+    from diskcache import Index
+    from pathlib import Path
+    cache = Index(str(Path.home() / '.twse_crawler' / '資料庫' / '終止上市公司庫'))
+    cached = cache.get('終止上市公司', None)
+    try:
+        csv_url = "https://www.twse.com.tw/company/suspendListingCsvAndHtml?type=open_data"
+        sio = 抓取(csv_url, 回傳資料形態="StringIO")
+        df = pd.read_csv(sio, encoding="utf-8"
+                        ,dtype={"上市編號":str}
+                        ,converters={"終止上市日期":取日期}
+                        )
+        if isinstance(cached, pd.DataFrame) or df.終止上市日期.max() > cached.終止上市日期.max():
+            cache['終止上市公司'] = df
+            return df
+    except Exception as e:
+        logger.error(f'抓取終止上市公司失敗，係發生{e}！')
+        logger.error(f'回傳上次結果！')
+    return cached
