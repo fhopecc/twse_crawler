@@ -7,25 +7,28 @@ logger = logging.getLogger(Path(__file__).stem)
 class Test(unittest.TestCase):
 
     def test預測前年至次年每股盈餘(self):
-        from twse_crawler.營收分析 import 以營收預測次年每股盈餘, cache
+        from twse_crawler.營收分析 import 以營收預測次年每股盈餘
+        from twse_crawler.營收分析 import 以營收預測稅前淨利及次年每股盈餘
         from twse_crawler.營收分析 import 以營收預測稅前淨利及次年每股盈餘
         from zhongwen.表 import 表示
         import zhongwen.快取 as 快取
+
+        self.assertFalse(True)
         快取.停止快取 = True
-        cache.clear()
+        twse_crawler.營收分析.cache.clear()
         s = 以營收預測稅前淨利及次年每股盈餘('6405')
         print(s.預估說明)
         print(s.預估方法說明)
-        self.assertFalse(True)
 
-    def test預測前年至次年營收(self):
-        from twse_crawler.營收分析 import 預測前年至次年營收
-        from zhongwen.表 import 顯示, 數據不足
-
-        self.assertRaises(數據不足, 預測前年至次年營收, '凌航')
-
-        預測結果 = 預測前年至次年營收('台積電')
-        顯示(預測結果)
+    def test預測營收(self):
+        from twse_crawler.營收分析 import 預測次年底營收
+        from zhongwen.表 import 表示
+        import matplotlib.pyplot as plt
+        r = 預測次年底營收('互動')
+        # r.預估每月值.plot()
+        表示(r.預估每月值, 顯示索引=True, 顯示筆數=1000)
+        # print(r.預估每月值)
+        # plt.show()
 
     def test依台積電月營收預測次年資本支出(self):
         from twse_crawler.營收分析 import 依台積電月營收預測次年資本支出
@@ -71,10 +74,5 @@ if __name__ == '__main__':
     logging.getLogger('urllib3').setLevel(logging.CRITICAL)
     # unittest.main()
     suite = unittest.TestSuite()
-    # suite.addTest(Test('test取歷月營收表'))
-    # suite.addTest(Test('test預測前年至次年營收'))
-    # suite.addTest(Test('test依台積電月營收預測次年資本支出'))
-    # suite.addTest(Test('test依台積電資本支出預測營收'))
-    suite.addTest(Test('test預測前年至次年每股盈餘'))
-    # suite.addTest(Test('test分析月營收'))
+    suite.addTest(Test('test預測營收'))
     unittest.TextTestRunner().run(suite)
