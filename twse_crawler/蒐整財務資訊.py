@@ -13,25 +13,17 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     '''
     from zhongwen.時 import 今日, 上季, 取季別年數季數, 取日期
     from datetime import timedelta
-    from twse_crawler.損益表分析 import cache as bcache
-    from twse_crawler.資產負債表分析 import cache as ccache
-    from twse_crawler.財報爬蟲 import 爬取上季財報, dcache
-    from twse_crawler.現流表分析 import cache as ecache
-    from twse_crawler.營收分析 import cache as fcache
-    from twse_crawler.自結損益 import cache as gcache
-    from twse_crawler.行情分析 import cache as hcache
     from zhongwen.表 import 表示
-
+    import twse_crawler
+    下市櫃股票代號 = twse_crawler.股票基本資料分析.取下市櫃股票代號()
     # 更新落後2季以上之財報數據
     from twse_crawler.資產負債表分析 import 取資產負債表
     from twse_crawler.現流表分析 import 取現流表
-    from twse_crawler.財報爬蟲 import 爬取上季財報 
     from zhongwen.時 import 本季, 上季
-    import twse_crawler
     twse_crawler.資產負債表分析.cache.clear()
     df = 取資產負債表()
-    df = df.groupby('股票代號').agg(財報季度=('財報季度','max')
-    )
+    df = df[~df.股票代號.isin(下市櫃股票代號)]
+    df = df.groupby('股票代號').agg(財報季度=('財報季度','max'))
     df = df.query('股票代號=="1101"')
     df['距今季數'] = df.財報季度.map(lambda q: (本季 - q).n)
     df = df.query('not 距今季數>3')
@@ -58,10 +50,11 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     
     # 更新月營收
     from twse_crawler.公開資訊觀測站爬蟲 import 抓取月營收彙總表
-    from twse_crawler.營收分析 import 取歷月營收表, cache
+    from twse_crawler.營收分析 import 取歷月營收表
     from zhongwen.時 import 本月
-    cache.clear()
+    twse_crawler.營收分析.cache.clear()
     df = 取歷月營收表()
+    df = df[~df.公司代號.isin(下市櫃股票代號)]
     df = df.groupby('公司代號').agg(營收月份=('營收月份', 'max'))
     df['距今月數'] = df.營收月份.map(lambda m: (本月 - m).n)
     df = df.query('not 距今月數>4')
@@ -74,9 +67,10 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
 
     # 更新月自結損益
     from twse_crawler.公開資訊觀測站爬蟲 import 抓取月自結損益彙總表
-    from twse_crawler.自結損益 import 取自結損益表, cache
-    cache.clear()
+    from twse_crawler.自結損益 import 取自結損益表
+    twse_crawler.自結損益.cache.clear()
     df = 取自結損益表()
+    df = df[~df.公司代號.isin(下市櫃股票代號)]
     df = df.groupby('公司代號').agg(自結損益月份=('自結損益月份', 'max'))
     df['距今月數'] = df.自結損益月份.map(lambda m: (本月 - m).n)
     df = df.query('not 距今月數>4')

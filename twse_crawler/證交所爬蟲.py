@@ -171,7 +171,7 @@ def 抓取終止上市公司():
                         ,dtype={"上市編號":str}
                         ,converters={"終止上市日期":取日期}
                         )
-        if isinstance(cached, pd.DataFrame) or df.終止上市日期.max() > cached.終止上市日期.max():
+        if not isinstance(cached, pd.DataFrame) or df.終止上市日期.max() > cached.終止上市日期.max():
             cache['終止上市公司'] = df
             return df
     except Exception as e:

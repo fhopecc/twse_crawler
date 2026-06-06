@@ -209,3 +209,8 @@ def 取股票詳情連結(股票):
     if not df.empty:
         href = df.iloc[-1].url
     return f'<a href={href} target="_blank">{簡稱}</a>'
+
+def 取下市櫃股票代號() -> "pandas.Series":
+    from twse_crawler.證交所爬蟲 import 抓取終止上市公司
+    df = 抓取終止上市公司()
+    return df.上市編號
