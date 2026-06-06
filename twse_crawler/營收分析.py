@@ -493,8 +493,8 @@ def 預測次年底營收(股票):
     from zhongwen.表 import 表示
     from zhongwen.快取 import 停止快取
     h = 取歷月營收表(股票)
+    c = 營收分析快取[f'預測次年底營收({股票})']
     try:
-        c = 營收分析快取[f'預測次年底營收({股票})']
         if not 停止快取 and c.最近歷史值時間 >= h.index.max():
             return c
     except KeyError: pass
