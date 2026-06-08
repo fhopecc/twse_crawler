@@ -111,7 +111,8 @@ def 取損益表(股票=None, 個體報表=False):
         股票代號 = 查股票代號(股票)
         h = 取損益表(個體報表=個體報表)
         h = h.query('股票代號==@股票代號')
-        h = h.set_index(h.財報日期.dt.to_period('Q')).rename_axis('財報季度')
+        h['財報季度索引'] = h.財報季度
+        h = h.set_index('財報季度索引')
         h = h.sort_index()
         return h
 
@@ -442,3 +443,129 @@ def 預估業外損益(股票):
     p['預估方法說明'] = 表達預估方法(p, '業外損益')
     損益表分析快取[ck] = p
     return p
+
+def 檢測營收及毛利率關係(股票):
+    """分析季營收、毛利率與業外結構，嚴格診斷公司是否處於「本業保毛利轉型」狀態。
+
+    Parameters:
+    q_revenue (pd.Series): 季營收
+    q_margin (pd.Series): 季毛利率(%)
+    q_op_income (pd.Series): 季營業利益 (本業獲利)
+    q_pretax_income (pd.Series): 季稅前淨利 (總獲利)
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+    from zhongwen.表 import 表示
+    
+    # 1. 合併所有資料並自動對齊時間索引
+    df = 取損益表(股票)
+
+    # 2. 計算關鍵衍生指標
+    df["營收_YoY"] = df["營收"].pct_change(4)
+    df["毛利_YoY差值"] = df["毛利率"] - df["毛利率"].shift(4)
+
+    # 計算業外損益：稅前淨利 - 營業利益
+    df["業外損益"] = df["稅前淨利"] - df["營利"]
+
+    # 計算業外比例：|業外損益| / |稅前淨利| (取絕對值避免虧損導致比例混亂)
+    # 若稅前淨利為負或趨近於0，設為100%業外影響
+    df["業外比例"] = np.where(
+        df["稅前淨利"].abs() > 0, df["業外損益"].abs() / df["稅前淨利"].abs(), 1.0
+    )
+
+    # df = df.dropna()
+
+    # 3. 嚴格版邏輯診斷分類
+    def 嚴格診斷分類(row):
+        rev_yoy = row["營收_YoY"]
+        margin_diff = row["毛利_YoY差值"]
+        non_op_ratio = row["業外比例"]
+
+        # 基礎分類
+        if rev_yoy < 0 and margin_diff > 0:
+            # 💡 核心過濾機制：如果符合保毛利形態，但業外比例大於等於 50%，判定為偽轉型！
+            if non_op_ratio >= 0.5:
+                return "⚠️ 偽轉型 (靠業外撐場)"
+            return "🎯 精實轉型 (本業保毛利)"
+        elif rev_yoy < 0 and margin_diff <= 0:
+            return "❌ 市場淘汰 (真衰退)"
+        elif rev_yoy >= 0 and margin_diff > 0:
+            return "🌟 戴維斯雙擊 (強勢成長)"
+        else:
+            return "💸 流血流淚 (殺價搶市)"
+
+    df["診斷結果"] = df.apply(嚴格診斷分類, axis=1)
+    from zhongwen.表 import 表示
+    表示(df, 顯示筆數=2000)
+    # 4. 印出最新季度報告
+    最新結果 = df["診斷結果"].iloc[-1]
+    當季業外 = df["業外比例"].iloc[-1] * 100
+
+    m = ("===="
+    f"【嚴格版體質檢測報告】 最新數據：{df.index[-1].strftime('%Y-Q%q')}"
+    f"  * 營收年增率 (YoY)：{df['營收_YoY'].iloc[-1]*100:.2f}%"
+    f"  * 毛利率較去年同期：{df['毛利_YoY差值'].iloc[-1]:+.2f}%"
+    f"  * ⚠️ 當季業外損益佔比 ：{當季業外:.2f}%"
+    f"  => 📊 綜合診斷狀態：{最新結果}"
+    "===="
+    "\n歷史季度狀態分佈統計："
+    f"{df["診斷結果"].value_counts()}")
+    if isinstance(df.index, pd.PeriodIndex):
+        df.index = df.index.to_timestamp()
+
+    # 5. 繪圖 (只高亮「純本業」精實轉型的綠色區塊)
+    plt.rcParams["font.sans-serif"] = ["Microsoft JhengHei", "SimHei", "sans-serif"]
+    plt.rcParams["axes.unicode_minus"] = False
+    fig, ax1 = plt.subplots(figsize=(14, 6))
+
+    ax1.set_xlabel("時間 (季度)", fontsize=12)
+    ax1.set_ylabel("營收 YoY (%)", color="navy", fontsize=12)
+    ax1.bar(
+        df.index,
+        df["營收_YoY"] * 100,
+        width=50,
+        color="navy",
+        alpha=0.3,
+        label="營收 YoY",
+    )
+    ax1.axhline(0, color="black", linewidth=0.8, linestyle="--")
+
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("毛利率 YoY 差值 (%)", color="crimson", fontsize=12)
+    ax2.plot(
+        df.index,
+        df["毛利_YoY差值"],
+        color="crimson",
+        marker="s",
+        linewidth=2,
+        label="毛利率差值",
+    )
+
+    # 著色高亮
+    for idx, row in df.iterrows():
+        if row["診斷結果"] == "🎯 精實轉型 (本業本質)":
+            ax1.axvspan(
+                idx - pd.Timedelta(days=45),
+                idx + pd.Timedelta(days=45),
+                color="green",
+                alpha=0.1,
+            )
+        elif row["診斷結果"] == "⚠️ 偽轉型 (靠業外撐場)":
+            # 靠業外虛胖的，我們把它標成警戒黃色
+            ax1.axvspan(
+                idx - pd.Timedelta(days=45),
+                idx + pd.Timedelta(days=45),
+                color="orange",
+                alpha=0.15,
+            )
+
+    plt.title(
+        "嚴格版檢測圖 (綠色為純本業保毛利，橘色為業外過高偽轉型)",
+        fontsize=16,
+        fontweight="bold",
+    )
+    fig.tight_layout()
+    plt.show()
+
+    return m

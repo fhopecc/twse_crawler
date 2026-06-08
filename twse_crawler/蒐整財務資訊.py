@@ -17,7 +17,7 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     from zhongwen.時 import 今日, 上季, 取季別年數季數, 取日期
     from datetime import timedelta
     from zhongwen.表 import 表示
-    import twse_crawler
+    import twse_crawler.股票基本資料分析
     下市櫃股票代號 = twse_crawler.股票基本資料分析.取下市櫃股票代號()
     # 更新落後2季以上之財報數據
     from twse_crawler.資產負債表分析 import 取資產負債表

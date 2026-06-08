@@ -515,9 +515,9 @@ def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
     from zhongwen.文 import 臚列
     import pandas as pd
     import zhongwen
+    import twse_crawler
     公司代號 = 查股票代號(股票)
     公司簡稱 = 查股票簡稱(股票)
-    
     歷季損益表 = 取損益表(公司代號)
     最近財報季度 = 歷季損益表.財報季度.max()
     歷季損益表['營收'] = 歷季損益表.營收.fillna(0)

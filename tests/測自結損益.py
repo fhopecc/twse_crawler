@@ -11,7 +11,7 @@ class Test(unittest.TestCase):
         from twse_crawler.自結損益 import 取自結損益表, cache
         from zhongwen.表 import 數據不足, 表示
         from twse_crawler.公開資訊觀測站爬蟲 import 抓取月自結損益彙總表, 自結損益資料庫
-        r = 以自結營利預測次年每股盈餘('豐興')
+        r = 以自結營利預測次年每股盈餘('遠傳')
         表示(r, 顯示索引=True, 顯示筆數=1000)
 
         self.assertTrue(False)
