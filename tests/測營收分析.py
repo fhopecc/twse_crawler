@@ -6,25 +6,12 @@ logger = logging.getLogger(Path(__file__).stem)
 
 class Test(unittest.TestCase):
 
-    def test預測前年至次年每股盈餘(self):
-        from twse_crawler.營收分析 import 以營收預測次年每股盈餘
-        from twse_crawler.營收分析 import 以營收預測稅前淨利及次年每股盈餘
-        from twse_crawler.營收分析 import 以營收預測稅前淨利及次年每股盈餘
-        from zhongwen.表 import 表示
-        import zhongwen.快取 as 快取
-
-        self.assertFalse(True)
-        快取.停止快取 = True
-        twse_crawler.營收分析.cache.clear()
-        s = 以營收預測稅前淨利及次年每股盈餘('6405')
-        print(s.預估說明)
-        print(s.預估方法說明)
-
     def test預測營收(self):
         from twse_crawler.營收分析 import 預測次年底營收
         from zhongwen.表 import 表示
         import matplotlib.pyplot as plt
-        r = 預測次年底營收('互動')
+        公司 = 泰銘
+        r = 預測次年底營收(公司)
         # r.預估每月值.plot()
         表示(r.預估每月值, 顯示索引=True, 顯示筆數=1000)
         # print(r.預估每月值)
