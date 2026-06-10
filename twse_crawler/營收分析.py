@@ -529,7 +529,7 @@ def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
     # 快取判斷
     try:
         c = 營收分析快取[f'以營收預測次年每股盈餘預({股票})']
-        if not zhongwen.快取.停止快取 and (c.最近營收月份 >= 最近營收月份 or c.最近財報季度 >= 最近財報季度):
+        if not zhongwen.快取.停止快取 and (c.最近營收月份 >= 最近營收月份 and c.最近財報季度 >= 最近財報季度):
             return c
     except KeyError: pass
 

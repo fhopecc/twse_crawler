@@ -8,12 +8,16 @@ class Test(unittest.TestCase):
 
     def test預測營收(self):
         from twse_crawler.營收分析 import 預測次年底營收
+        from twse_crawler.營收分析 import 以營收預測次年每股盈餘
+        from twse_crawler.鉛價分析 import 以鉛價預測次年每股盈餘
         from zhongwen.表 import 表示
         import matplotlib.pyplot as plt
-        公司 = 泰銘
-        r = 預測次年底營收(公司)
+        公司 = '中宇'
+        # r = 預測次年底營收(公司)
+        r = 以營收預測次年每股盈餘(公司)
+        表示(r) 
         # r.預估每月值.plot()
-        表示(r.預估每月值, 顯示索引=True, 顯示筆數=1000)
+        # 表示(r.預估每月值, 顯示索引=True, 顯示筆數=1000)
         # print(r.預估每月值)
         # plt.show()
 
