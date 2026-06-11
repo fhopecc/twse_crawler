@@ -1,4 +1,8 @@
+from pathlib import Path
 import pandas as pd
+import logging
+logger = logging.getLogger(Path(__file__).stem)
+
 def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     '''
     一、更新落後2期以上之資訊，如落後2季以上之財報，2月以上之月營收。
@@ -83,6 +87,61 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
             表示(df_lag, 顯示索引=True)
             if not 僅顯示落後資訊不予更新:
                 抓取月自結損益彙總表(本月-lag_mon+1)
+
+def 取股票資料最近時間(股票) -> "pandas.Series":
+    '''
+    一、項目：最近財報季度、最近自結損益月份及最近營收月份。
+    二、無該資料即無項目，如無最近自結損益月份，結果即無該項目，
+        指定項目會發生 KeyError。
+    '''
+    from twse_crawler.資產負債表分析 import 取資產負債表
+    from twse_crawler.營收分析 import 取歷月營收表
+    from twse_crawler.自結損益 import 取自結損益表
+    import pandas as pd
+    最近資料時間 = pd.Series()
+    最近資料時間['最近財報季度'] = 取資產負債表(股票).財報季度.max()
+    最近資料時間['最近自結損益月份'] = 取自結損益表(股票).自結損益月份.max()
+    最近資料時間['最近營收月份'] = 取歷月營收表(股票).營收月份.max()
+    return 最近資料時間.dropna()
+
+def 增加股票分析函數依資料時間更新快取功能(快取檔: "diskcache.Index", 資料時間項目):
+    '''
+    一、股票分析函數具一個參數股票，並對參數指定股票進行分析。
+    二、股票分析函數函數係分析指定股票之分析函數。
+    一、依指定取時序函數、名稱欄位、時間欄位、快取檔案增加分析函數快取時序分析結果功能。
+    三、名稱即為快取鍵，通常為股票名稱或公司名稱。
+    四、時間欄位可為多個，其中一個時戳落後即予更新。
+    五、如指定名稱之時序資料為空，則引發數據不足錯誤。
+    '''
+    from zhongwen.表 import 數據不足
+    from zhongwen.時 import 取正式民國日期
+    from functools import wraps
+    import pandas as pd
+    def 取可依資料時間更新快取之股票分析函數(股票分析函數):
+        @wraps(股票分析函數)
+        def 可依資料時間更新快取之股票分析函數(股票):
+            '''
+            一、股票分析函數具一個參數股票，並對參數指定股票進行分析。
+            '''
+            from collections.abc import Iterable 
+            from zhongwen.表 import 表示
+            import pandas as pd
+            import zhongwen.快取
+            最近資料時間 = 取股票資料最近時間(股票)
+            if not zhongwen.快取.停止快取:
+                try:
+                    快取 = 快取檔[f'{股票分析函數.__name__}({股票})']
+                    表示(快取)
+                    print(最近資料時間)
+                    if all(快取[f'最近{i}'] >= 最近資料時間[f'最近{i}'] for i in 資料時間項目):
+                        logger.info(f'{股票分析函數.__name__}({股票})->快取值！')
+                        return 快取
+                except KeyError: pass
+            r = 股票分析函數(股票)
+            快取檔[f'{股票分析函數.__name__}({股票})'] = r
+            return r 
+        return 可依資料時間更新快取之股票分析函數
+    return 取可依資料時間更新快取之股票分析函數
 
 if __name__ == '__main__':
     蒐整財務資訊(僅顯示落後資訊不予更新=True) 

@@ -1,5 +1,6 @@
 from zhongwen.庫 import 通知執行時間, 增加定期更新
 from zhongwen.快取 import 增加快取時序分析結果
+from twse_crawler.蒐整財務資訊 import 增加股票分析函數依資料時間更新快取功能
 from diskcache import Cache, Index
 from pathlib import Path
 import functools
@@ -485,8 +486,8 @@ def 預測次年底營收(股票):
     from zhongwen.表 import 表示
     from zhongwen.快取 import 停止快取
     h = 取歷月營收表(股票)
-    c = 營收分析快取[f'預測次年底營收({股票})']
     try:
+        c = 營收分析快取[f'預測次年底營收({股票})']
         if not 停止快取 and c.最近歷史值時間 >= h.index.max():
             return c
     except KeyError: pass
@@ -498,6 +499,7 @@ def 預測次年底營收(股票):
     return p
 
 @通知執行時間
+@增加股票分析函數依資料時間更新快取功能(營收分析結果快取檔, ['營收月份', '財報季度'])
 def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
     '''
     一、以指定股票歷月營收表預測前年至次年每股盈餘。
@@ -527,11 +529,11 @@ def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
     最近營收月份 = df.營收月份.max()
 
     # 快取判斷
-    try:
-        c = 營收分析快取[f'以營收預測次年每股盈餘預({股票})']
-        if not zhongwen.快取.停止快取 and (c.最近營收月份 >= 最近營收月份 and c.最近財報季度 >= 最近財報季度):
-            return c
-    except KeyError: pass
+    # try:
+    #     c = 營收分析快取[f'以營收預測次年每股盈餘預({股票})']
+    #     if not zhongwen.快取.停止快取 and (c.最近營收月份 >= 最近營收月份 and c.最近財報季度 >= 最近財報季度):
+    #         return c
+    # except KeyError: pass
 
     try:
         最近損益 = 歷季損益表.iloc[-1]
@@ -618,7 +620,7 @@ def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
                          ,'最近財報季度':最近財報季度
                          ,'最近營收月份':最近營收月份
                          })
-    營收分析快取[f'以營收預測次年每股盈餘預({股票})'] = 預測結果
+    # 營收分析快取[f'以營收預測次年每股盈餘預({股票})'] = 預測結果
     return 預測結果
 
 @通知執行時間
