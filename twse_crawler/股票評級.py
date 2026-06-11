@@ -264,12 +264,13 @@ def 顯示股票評級彙總表(報酬率下限=0):
 
 if __name__ == '__main__':
     from zhongwen.程式 import 列出函數執行時間表
-    from zhongwen.表 import 顯示
     import zhongwen.快取 
+    from twse_crawler.蒐整財務資訊 import 蒐整財務資訊
     import logging
     logging.getLogger('googleapiclient').setLevel(logging.CRITICAL)
     logging.basicConfig(level=logging.INFO)
-    # cache.clear()
-    # zhongwen.快取.停止快取=True
+    cache.clear()
+    蒐整財務資訊()
+    zhongwen.快取.停止快取=True
     顯示股票評級彙總表(0.05)
-    # 列出函數執行時間表()
+    列出函數執行時間表()
