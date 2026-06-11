@@ -10,16 +10,20 @@ class Test(unittest.TestCase):
         from twse_crawler.營收分析 import 預測次年底營收
         from twse_crawler.營收分析 import 以營收預測次年每股盈餘
         from twse_crawler.鉛價分析 import 以鉛價預測次年每股盈餘
+        from twse_crawler.資產負債表分析 import 取資產負債表
         from zhongwen.表 import 表示
         import matplotlib.pyplot as plt
         公司 = '中宇'
-        # r = 預測次年底營收(公司)
-        r = 以營收預測次年每股盈餘(公司)
-        表示(r) 
-        # r.預估每月值.plot()
+        df = 取資產負債表(公司)
+        # 表示(df['合約負債－流動'], 顯示筆數=2000, 顯示索引=True) 
+        df['合約負債－流動'].plot()
+        plt.show()
+        self.assertFalse(True)
+        r = 預測次年底營收(公司)
+        表示(r.預估每月值, 顯示筆數=2000, 顯示索引=True) 
+        r.預估每月值.plot()
         # 表示(r.預估每月值, 顯示索引=True, 顯示筆數=1000)
         # print(r.預估每月值)
-        # plt.show()
 
     def test依台積電月營收預測次年資本支出(self):
         from twse_crawler.營收分析 import 依台積電月營收預測次年資本支出

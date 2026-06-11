@@ -1036,3 +1036,475 @@ def 以外部月數據預估次年底各月值(
     })
     return 預測結果
 
+def 以外部季數據預估次年底各月值(
+    歷月值: "pd.Series",
+    外部季數據表: "pd.DataFrame",
+    預估目標 = '營利',  
+    單位 = '元'        
+) -> "pd.Series":
+    """
+    一、歷月值之索引須為 pd.PeriodIndex(freq='M')，外部季數據表之索引須為 pd.PeriodIndex(freq='Q')。
+    二、預估結果項目：預估各月值、rmse、mape、歷史值數量、預估值數量、回測資料數、
+                     模型名稱、模型參數、最近歷史值時間、最後預估值時間、
+                     最近歷史值同比、首期預估值同比。
+    三、函式內部會自動將季數據（如合約負債）轉化並對齊至月頻率軸，全程在純月頻率（Freq='M'）下進行滾動盲測與預測。
+    """
+    # 1. 於函式內部進行套件導入
+    import warnings
+    import numpy as np
+    import pandas as pd
+    import optuna
+    import statsmodels.api as sm
+    from sklearn.metrics import mean_squared_error
+
+    warnings.filterwarnings("ignore")
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+    # =====================================================================
+    # 🛠️ 2. 數據對齊、季轉月頻率、清洗與時軸動態擴展
+    # =====================================================================
+    # 確保歷月值為月頻率 PeriodIndex
+    if not isinstance(歷月值.index, pd.PeriodIndex):
+        歷月值.index = pd.to_datetime(歷月值.index).to_period('M')
+    歷月值 = 歷月值.sort_index().astype(float)
+    
+    # 確保外部數據表為季頻率 PeriodIndex
+    if not isinstance(外部季數據表.index, pd.PeriodIndex):
+        外部季數據表.index = pd.to_datetime(外部季數據表.index).to_period('Q')
+    elif 外部季數據表.index.freqstr.startswith('M'):
+        # 若誤傳為月頻率，轉換回季度
+        外部季數據表.index = 外部季數據表.index.to_period('Q')
+        
+    外部季數據表 = 外部季數據表.sort_index()
+
+    # 將季頻率索引轉為該季的「最後一個月」（例如：2025Q1 -> 2025-03）
+    外部月映射表 = 外部季數據表.copy()
+    外部月映射表.index = 外部月映射表.index.to_timestamp(how='E').to_period('M')
+
+    # 自動推論時間軸：從歷史起點一路延伸到「次年底」
+    最近月份 = 歷月值.index[-1]
+    
+    try:
+        from zhongwen.時 import 今年數
+        次年數 = 今年數 + 1
+    except ImportError:
+        次年數 = 最近月份.year + 1
+        
+    次年底最後一月 = pd.Period(f"{次年數}-12", freq='M')
+    未來月時軸 = pd.period_range(start=最近月份 + 1, end=次年底最後一月, freq='M')
+    全月時間軸 = pd.period_range(start=min(歷月值.index.min(), 外部月映射表.index.min()), end=次年底最後一月, freq='M')
+    
+    # 將轉換後的外部數據重新配置到全月時間軸，並向下填補（ffill），確保未來預測期也有特徵值可用
+    X_原始矩陣 = 外部月映射表.reindex(全月時間軸).ffill().astype(float)
+    
+    # 動態推論所有外部特徵名稱
+    外部數據名稱 = X_原始矩陣.columns.tolist()
+    
+    if len(外部數據名稱) == 0:
+        raise ValueError("外部季數據表無特徵欄位！")
+        
+    # 設定月度模型回測12個月即回測一個年度
+    回測月數 = 12
+
+    # =====================================================================
+    # 🎯 3. 定義 Optuna 最佳化目標函數 (以 AIC 為核心，完全基於月頻率)
+    # =====================================================================
+    def objective(trial):
+        # 參數 1：特徵的時間滯後效應（單位：月，合約負債反映到營收通常在 0 ~ 6 個月）
+        lag = trial.suggest_int('lag_months', 0, 6)
+        
+        # 參數 2：歷史記憶視窗
+        min_window = 24  
+        max_window = len(歷月值) - 回測月數 - lag
+        if max_window <= min_window:
+            window_size = min_window
+        else:
+            window_size = trial.suggest_int('window_size', min_window, max_window)
+            
+        # 參數 3：Newey-West 殘差修正滯後階數（修正營收季節性帶來的自相關）
+        maxlags = trial.suggest_int('maxlags', 3, 6)
+
+        # 依據選定的滯後階數進行特徵位移
+        X_滯後矩陣 = X_原始矩陣.shift(lag)
+        # 訓練時僅對齊有歷史營收的區間
+        聯集資料 = pd.concat([歷月值, X_滯後矩陣], axis=1).dropna()
+        
+        if len(聯集資料) <= 回測月數 + 12:
+            return float('inf')
+
+        y_全 = 聯集資料[歷月值.name if 歷月值.name else 預估目標]
+        X_全 = 聯集資料[外部數據名稱]
+        X_全_含常數 = sm.add_constant(X_全)
+
+        單步回測值 = []
+        累加_aic = 0.0
+        有效回測步數 = 0
+        
+        # 執行月度滾動盲測
+        for i in range(回測月數):
+            全資料當前終點 = len(聯集資料) - 回測月數 + i
+            訓練起點 = max(0, 全資料當前終點 - window_size)
+            
+            X_訓練 = X_全_含常數.iloc[訓練起點:全資料當前終點]
+            y_訓練 = y_全.iloc[訓練起點:全資料當前終點]
+            X_測試 = X_全_含常數.iloc[[全資料當前終點]]
+            
+            try:
+                # 使用 HAC (Newey-West) 修正異質變異與自相關
+                模型 = sm.OLS(y_訓練, X_訓練).fit(cov_type='HAC', cov_kwds={'maxlags': maxlags})
+                單月預測 = 模型.predict(X_測試)
+                單步回測值.append(單月預測.values[0])
+                
+                累加_aic += 模型.aic
+                有效回測步數 += 1
+            except:
+                return float('inf')
+                
+        if 有效回測步數 == 0:
+            return float('inf')
+
+        評估_aic = 累加_aic / 有效回測步數
+        
+        # 計算隨附的盲測驗證指標
+        真實值 = y_全.iloc[-回測月數:]
+        回測值_陣列 = np.array(單步回測值)
+        
+        評估_mape = np.mean(np.abs((真實值 - 回測值_陣列) / 真實值))
+        評估_rmse = np.sqrt(mean_squared_error(真實值, 回測值_陣列))
+        
+        trial.set_user_attr("mape", float(評估_mape))
+        trial.set_user_attr("rmse", float(評估_rmse))
+        
+        return 評估_aic
+
+    # =====================================================================
+    # 🚀 4. 啟動 Optuna 最小化 AIC
+    # =====================================================================
+    研究工廠 = optuna.create_study(direction='minimize')
+    研究工廠.optimize(objective, n_trials=30)
+    
+    最佳參數 = 研究工廠.best_params
+    最佳滯後 = 最佳參數['lag_months']
+    最佳視窗 = 最佳參數.get('window_size', len(歷月值) - 回測月數 - 最佳滯後)
+    最佳殘差階數 = 最佳參數['maxlags']
+
+    # 5. 使用最優超參數重新建立歷史底稿
+    X_最佳滯後矩陣 = X_原始矩陣.shift(最佳滯後)
+    最終聯集資料 = pd.concat([歷月值, X_最佳滯後矩陣], axis=1).ffill().bfill()
+    
+    y_歷史 = 最終聯集資料.loc[歷月值.index, 歷月值.name if 歷月值.name else 預估目標]
+    X_歷史 = 最終聯集資料.loc[歷月值.index, 外部數據名稱]
+    X_歷史_含常數 = sm.add_constant(X_歷史)
+
+    # 6. 從最優實驗提取元數據
+    最佳實驗 = 研究工廠.best_trial
+    mape = 最佳實驗.user_attrs.get("mape", 0.0)
+    rmse = 最佳實驗.user_attrs.get("rmse", 0.0)
+
+    # =====================================================================
+    # 📈 7. 自動動態識別預測時間軸與計算同比（YoY）
+    # =====================================================================
+    # 計算：最近歷史值同比 (YoY)
+    最近歷史月去年同月 = 最近月份 - 12
+    if 最近歷史月去年同月 in y_歷史.index and y_歷史.loc[虧損或零值檢查 := 最近歷史月去年同月] != 0:
+        最近歷史值同比 = (y_歷史.loc[最近月份] - y_歷史.loc[最近歷史月去年同月]) / abs(y_歷史.loc[最近歷史月去年同月])
+    else:
+        最近歷史值同比 = np.nan
+
+    # 8. 擬合最終預測模型
+    最終訓練起點 = max(0, len(y_歷史) - 最佳視窗)
+    X_最終訓練 = X_歷史_含常數.iloc[最終訓練起點:]
+    y_最終訓練 = y_歷史.iloc[最終訓練起點:]
+    
+    最終預測模型 = sm.OLS(y_最終訓練, X_最終訓練).fit(cov_type='HAC', cov_kwds={'maxlags': 最佳殘差階數})
+    
+    # 提取未來的外部月特徵數據並預測
+    X_未來 = 最終聯集資料.loc[未來月時軸, 外部數據名稱]
+    X_未來_含常數 = sm.add_constant(X_未來, has_constant='add')
+    預估各月_陣列 = 最終預測模型.predict(X_未來_含常數)
+    預估各月_序列 = pd.Series(預估各月_陣列, index=未來月時軸)
+
+    # 9. 整合並封裝「預估各月值」
+    預估目標全序列 = pd.concat([y_歷史, 預估各月_序列])
+    
+    # 計算：首期預估值同比 (YoY)
+    首期預估月份 = 未來月時軸[0]
+    首期預估去年同月 = 首期預估月份 - 12
+    if 首期預估去年同月 in 預估目標全序列.index and 預估目標全序列.loc[首期預估去年同月] != 0:
+        首期預估值同比 = (預估目標全序列.loc[首期預估月份] - 預估目標全序列.loc[首期預估去年同月]) / abs(預估目標全序列.loc[首期預估去年同月])
+    else:
+        首期預估值同比 = np.nan
+
+    # =====================================================================
+    # 📦 10. 重新包裝傳回結果 Series
+    # =====================================================================
+    預測結果 = pd.Series({
+        "預估各月值": 預估目標全序列,
+        "rmse": rmse,
+        "mape": mape,
+        "歷史值數量": len(y_歷史),
+        "預估值數量": len(預估各月_陣列),
+        "回測資料數": 回測月數,
+        "模型名稱": "以 HAC 調整共變數之 OLS",
+        "模型參數": 最佳參數,
+        "最近歷史值時間": 最近月份,
+        "最後預估值時間": 次年底最後一月,
+        "最近歷史值同比": 最近歷史值同比,
+        "首期預估值同比": 首期預估值同比
+    })
+    return 預測結果
+
+def 以外部季數據預估次年底各月值乙式(
+    歷月值: "pd.Series",
+    外部季數據表: "pd.DataFrame",
+    預估目標 = '營利',  
+    單位 = '元'        
+) -> "pd.Series":
+    """
+    【雙階段殘差組合模型 (Theta Baseline + OLS Residual Adjustment)】
+    一、歷月值之索引須為 pd.PeriodIndex(freq='M')，外部季數據表之索引須為 pd.PeriodIndex(freq='Q')。
+    二、預估結果項目：預估各月值（實際歷史值 + 未來組合預測值）、rmse、mape、歷史值數量、
+                     預估值數量、回測資料數、模型名稱、模型參數、最近歷史值時間、
+                     最後預估值時間、最近歷史值同比、首期預估值同比。
+    三、核心邏輯：
+        階段 1：由 Theta 模型捕捉月營收極強的季節性基本盤。
+        階段 2：利用逐步單步 forecast(1) 的方式安全建立 Theta 歷史擬合值，求出殘差，
+               並由 Optuna 自動尋找「合約負債」最佳滯後月數（Lag）與視窗，以 OLS 修正該殘差。
+    """
+    # 1. 於函式內部進行套件導入
+    import warnings
+    import numpy as np
+    import pandas as pd
+    import optuna
+    import statsmodels.api as sm
+    from statsmodels.tsa.forecasting.theta import ThetaModel
+    from sklearn.metrics import mean_squared_error
+
+    warnings.filterwarnings("ignore")
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+    # =====================================================================
+    # 🛠️ 2. 數據對齊、季轉月頻率、清洗與時軸動態擴展
+    # =====================================================================
+    if not isinstance(歷月值.index, pd.PeriodIndex):
+        歷月值.index = pd.to_datetime(歷月值.index).to_period('M')
+    歷月值 = 歷月值.sort_index().astype(float)
+    
+    if not isinstance(外部季數據表.index, pd.PeriodIndex):
+        外部季數據表.index = pd.to_datetime(外部季數據表.index).to_period('Q')
+    elif 外部季數據表.index.freqstr.startswith('M'):
+        外部季數據表.index = 外部季數據表.index.to_period('Q')
+        
+    外部季數據表 = 外部季數據表.sort_index()
+
+    # 將季頻率轉為該季的最後一個月（2025Q1 -> 2025-03）
+    外部月映射表 = 外部季數據表.copy()
+    外部月映射表.index = 外部月映射表.index.to_timestamp(how='E').to_period('M')
+
+    最近月份 = 歷月值.index[-1]
+    
+    try:
+        from zhongwen.時 import 今年數
+        次年數 = 今年數 + 1
+    except ImportError:
+        次年數 = 最近月份.year + 1
+        
+    次年底最後一月 = pd.Period(f"{次年數}-12", freq='M')
+    未來月時軸 = pd.period_range(start=最近月份 + 1, end=次年底最後一月, freq='M')
+    全月時間軸 = pd.period_range(start=min(歷月值.index.min(), 外部月映射表.index.min()), end=次年底最後一月, freq='M')
+    
+    # 擴展外部特徵至全月時間軸並向下填補
+    X_原始矩陣 = 外部月映射表.reindex(全月時間軸).ffill().astype(float)
+    外部數據名稱 = X_原始矩陣.columns.tolist()
+    
+    if len(外部數據名稱) == 0:
+        raise ValueError("外部季數據表無特徵欄位！")
+        
+    回測月數 = 12
+
+    # =====================================================================
+    # 🎯 3. 定義 Optuna 最佳化目標函數 (評估雙階段組合後的綜合表現)
+    # =====================================================================
+    def objective(trial):
+        lag = trial.suggest_int('lag_months', 0, 6)
+        
+        min_window = 24  
+        max_window = len(歷月值) - 回測月數 - lag
+        window_size = min_window if max_window <= min_window else trial.suggest_int('window_size', min_window, max_window)
+        maxlags = trial.suggest_int('maxlags', 3, 6)
+
+        X_滯後矩陣 = X_原始矩陣.shift(lag)
+        X_全_時軸_含常數 = sm.add_constant(X_滯後矩陣, has_constant='add')
+
+        單步組合回測值 = []
+        累加_aic_ols = 0.0
+        有效回測步數 = 0
+        
+        # 執行雙階段月度滾動盲測
+        for i in range(回測月數):
+            全資料當前終點 = len(歷月值) - 回測月數 + i
+            測試月份 = 歷月值.index[全資料當前終點]
+            
+            # -----------------------------------------------------------------
+            # 階段 1：當前盲測視窗的 Theta 預測與歷史殘差計算
+            # -----------------------------------------------------------------
+            y_歷史_當前 = 歷月值.iloc[:全資料當前終點]
+            
+            y_歷史_當前_ts = y_歷史_當前.copy()
+            y_歷史_當前_ts.index = y_歷史_當前_ts.index.to_timestamp()
+            
+            try:
+                # 建立當前時間點的基礎模型與下一單月預測
+                theta_模型 = ThetaModel(y_歷史_當前_ts, period=12).fit()
+                theta_單月預測 = theta_模型.forecast(1).values[0]
+                
+                # 🛠️ 修正處 1：為了取得 y_歷史_當前 對應的歷史擬合值，
+                # 我們往前滾動計算最近 24 期的擬合表現來提供給 OLS 作為殘差序列
+                擬合長度 = min(24, len(y_歷史_當前) - 13)
+                if 擬合長度 < 12:
+                    return float('inf')
+                
+                歷史擬合列表 = []
+                歷史擬合索引 = y_歷史_當前.index[-擬合長度:]
+                
+                for idx_m in 歷史擬合索引:
+                    切片終點 = y_歷史_當前.index.get_loc(idx_m)
+                    y_切片_ts = y_歷史_當前.iloc[:切片終點].copy()
+                    y_切片_ts.index = y_切片_ts.index.to_timestamp()
+                    t_mod = ThetaModel(y_切片_ts, period=12).fit()
+                    歷史擬合列表.append(t_mod.forecast(1).values[0])
+                
+                theta_歷史擬合 = pd.Series(歷史擬合列表, index=歷史擬合索引)
+                y_歷史_殘差 = (y_歷史_當前.loc[歷史擬合索引] - theta_歷史擬合).dropna()
+                
+                # -----------------------------------------------------------------
+                # 階段 2：用 OLS 模型擬合殘差
+                # -----------------------------------------------------------------
+                可用時軸 = y_歷史_殘差.index
+                X_訓練_ols = X_全_時軸_含常數.loc[可用時軸].iloc[-window_size:]
+                y_訓練_ols = y_歷史_殘差.loc[X_訓練_ols.index]
+                
+                模型_ols = sm.OLS(y_訓練_ols, X_訓練_ols).fit(cov_type='HAC', cov_kwds={'maxlags': maxlags})
+                
+                X_測試_ols = X_全_時軸_含常數.loc[[測試月份]]
+                ols_單月預測 = 模型_ols.predict(X_測試_ols).values[0]
+                
+                組合單月預測 = theta_單月預測 + ols_單月預測
+                單步組合回測值.append(組合單月預測)
+                
+                累加_aic_ols += 模型_ols.aic
+                有效回測步數 += 1
+            except:
+                return float('inf')
+                
+        if 有效回測步數 < 回測月數:
+            return float('inf')
+
+        真實值 = 歷月值.iloc[-回測月數:]
+        回測值_陣列 = np.array(單步組合回測值)
+        
+        評估_mape = np.mean(np.abs((真實值 - 回測值_陣列) / 真實值))
+        評估_rmse = np.sqrt(mean_squared_error(真實值, 回測值_陣列))
+        
+        trial.set_user_attr("mape", float(評估_mape))
+        trial.set_user_attr("rmse", float(評估_rmse))
+        
+        return 累加_aic_ols / 有效回測步數
+
+    # =====================================================================
+    # 🚀 4. 啟動 Optuna 最小化組合盲測殘差的 OLS AIC
+    # =====================================================================
+    研究工廠 = optuna.create_study(direction='minimize')
+    研究工廠.optimize(objective, n_trials=30)
+    
+    最佳參數 = 研究工廠.best_params
+    最佳滯後 = 最佳參數['lag_months']
+    最佳視窗 = 最佳參數.get('window_size', len(歷月值) - 回測月數 - 最佳滯後)
+    最佳殘差階數 = 最佳參數['maxlags']
+
+    # =====================================================================
+    # 📈 5. 使用全歷史數據重新擬合最終的雙階段組合模型
+    # =====================================================================
+    # 5-1. 最終階段 1：完整歷史的 Theta 擬合與未來預測
+    歷月值_ts = 歷月值.copy()
+    歷月值_ts.index = 歷月值_ts.index.to_timestamp()
+    最終_theta_模型 = ThetaModel(歷月值_ts, period=12).fit()
+    
+    未來_theta_預測_陣列 = 最終_theta_模型.forecast(len(未來月時軸)).values
+    未來_theta_預測_序列 = pd.Series(未來_theta_預測_陣列, index=未來月時軸)
+    
+    # 🛠️ 修正處 2：最終模型同樣採用全公開、無損的 forecast 循環建構最終的歷史殘差
+    最終擬合長度 = min(36, len(歷月值) - 13)
+    最終擬合列表 = []
+    最終擬合索引 = 歷月值.index[-最終擬合長度:]
+    
+    for idx_m in 最終擬合索引:
+        切片終點 = 歷月值.index.get_loc(idx_m)
+        y_切片_ts = 歷月值.iloc[:切片終點].copy()
+        y_切片_ts.index = y_切片_ts.index.to_timestamp()
+        t_mod = ThetaModel(y_切片_ts, period=12).fit()
+        最終擬合列表.append(t_mod.forecast(1).values[0])
+        
+    最終_theta_歷史擬合 = pd.Series(最終擬合列表, index=最終擬合索引)
+    最終_歷史殘差 = (歷月值.loc[最終擬合索引] - 最終_theta_歷史擬合).dropna()
+
+    # 5-2. 最終階段 2：完整歷史殘差的 OLS 擬合與未來預測
+    X_最佳滯後矩陣 = X_原始矩陣.shift(最佳滯後)
+    X_最終_時軸_含常數 = sm.add_constant(X_最佳滯後矩陣, has_constant='add')
+    
+    X_最終訓練_ols = X_最終_時軸_含常數.loc[最終_歷史殘差.index].iloc[-最佳視窗:]
+    y_最終訓練_ols = 最終_歷史殘差.loc[X_最終訓練_ols.index]
+    
+    最終_ols_模型 = sm.OLS(y_最終訓練_ols, X_最終訓練_ols).fit(cov_type='HAC', cov_kwds={'maxlags': 最佳殘差階數})
+    
+    X_未來_ols = X_最終_時軸_含常數.loc[未來月時軸]
+    未來_ols_預測_陣列 = 最終_ols_模型.predict(X_未來_ols).values
+    未來_ols_預測_序列 = pd.Series(未來_ols_預測_陣列, index=未來月時軸)
+
+    # 5-3. 雙階段未來預測值最終融合
+    未來_組合預測_序列 = 未來_theta_預測_序列 + 未來_ols_預測_序列
+
+    # 6. 從最優實驗提取綜合盲測元數據
+    最佳實驗 = 研究工廠.best_trial
+    mape = 最佳實驗.user_attrs.get("mape", 0.0)
+    rmse = 最佳實驗.user_attrs.get("rmse", 0.0)
+
+    # 7. 整合歷史與未來預測序列
+    預估目標全序列 = pd.concat([歷月值, 未來_組合預測_序列])
+
+    # =====================================================================
+    # 📊 8. 計算同比 (YoY)
+    # =====================================================================
+    最近歷史值同比 = np.nan
+    最近歷史月去年同月 = 最近月份 - 12
+    if 最近歷史月去年同月 in 歷月值.index and 歷月值.loc[最近歷史月去年同月] != 0:
+        recently_val = 歷月值.loc[最近月份]
+        base_val = 歷月值.loc[最近歷史月去年同月]
+        最近歷史值同比 = (recently_val - base_val) / abs(base_val)
+
+    首期預估值同比 = np.nan
+    首期預估月份 = 未來月時軸[0]
+    首期預估去年同月 = 首期預估月份 - 12
+    if 首期預估去年同月 in 預估目標全序列.index and 預估目標全序列.loc[首期預估去年同月] != 0:
+        f_val = 預估目標全序列.loc[首期預估月份]
+        f_base_val = 預估目標全序列.loc[首期預估去年同月]
+        首期預估值同比 = (f_val - f_base_val) / abs(f_base_val)
+
+    # =====================================================================
+    # 📦 9. 包裝傳回結果 Series
+    # =====================================================================
+    預測結果 = pd.Series({
+        "預估各月值": 預估目標全序列,
+        "rmse": rmse,
+        "mape": mape,
+        "歷史值數量": len(歷月值),
+        "預估值數量": len(未來_組合預測_序列),
+        "回測資料數": 回測月數,
+        "模型名稱": "Theta Baseline + OLS Residual HAC 組合模型",
+        "模型參數": 最佳參數,
+        "最近歷史值時間": 最近月份,
+        "最後預估值時間": 次年底最後一月,
+        "最近歷史值同比": 最近歷史值同比,
+        "首期預估值同比": 首期預估值同比
+    })
+    return 預測結果

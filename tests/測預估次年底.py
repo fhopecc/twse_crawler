@@ -7,21 +7,33 @@ class Test(unittest.TestCase):
         from twse_crawler.預估次年底 import 依外部季數據預估次年底數值
         from twse_crawler.預估次年底 import 預估至次年底每月值
         from twse_crawler.預估次年底 import 預估至次年底每季值
+        from twse_crawler.預估次年底 import 以外部季數據預估次年底各月值
+        from twse_crawler.預估次年底 import 以外部季數據預估次年底各月值乙式
         from zhongwen.表 import 表示
         from twse_crawler.鉛價分析 import 取鉛價
         from twse_crawler.財報分析 import 取財報彙總表
+        from twse_crawler.資產負債表分析 import 取資產負債表
         from twse_crawler.營收分析 import 以營收預測次年每股盈餘
         from twse_crawler.鉛價分析 import 以鉛價預測次年每股盈餘, cache
         from twse_crawler.營收分析 import 取歷月營收表
         from zhongwen import 快取
         import pandas as pd
+        股票 = '一零四'
+        h = 取歷月營收表(股票)
+        q = 取資產負債表(股票)
+        r1 = 預估至次年底每月值(h.營收)
+        表示(r1)
+        r2 = 以外部季數據預估次年底各月值(h.營收, q[['合約負債－流動']])
+        表示(r2)
+        # r3 = 以外部季數據預估次年底各月值乙式(h.營收, q[['合約負債－流動']])
+        # 表示(r3)
+        self.assertFalse(True)
         快取.停止快取 = True
         cache.clear() 
         股票 = '新麥'
         r = 以營收預測次年每股盈餘(股票)
         表示(r, 顯示索引=True)
 
-        self.assertFalse(True)
         r = 取歷月營收表('泰銘').set_index('營收月份').營收
         r = 預估至次年底每月值(r)
         表示(r.預估每月值.tail(36), 顯示索引=True) 
