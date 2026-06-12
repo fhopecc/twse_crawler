@@ -1,7 +1,8 @@
-from zhongwen.batch_data import 結果批次寫入, 通知執行時間, 增加定期更新
+from zhongwen.batch_data import 結果批次寫入, 增加定期更新
 from diskcache import Cache, Index
 from pathlib import Path
-import functools
+from zhongwen.程式 import 通知執行時間
+from zhongwen.快取 import 快取至記憶體
 import logging
 
 logger = logging.getLogger(Path(__file__).stem)
@@ -46,9 +47,8 @@ def 爬取近一季重大訊息():
     except requests.exceptions.ChunkedEncodingError as e:
         logger.error(f"發生錯誤：{e}")
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
-@cache.memoize('載入近一季重大訊息', expire=8*60*60)
 def 載入近一季重大訊息(股票=None):
     '''
     一、主鍵：公司代號、發言日期、發言時間。
@@ -70,11 +70,6 @@ def 載入近一季重大訊息(股票=None):
             import warnings
             warnings.warn(f'{股票簡稱}無近一季重大訊息') 
         return df
-
-    try:
-        爬取近一週重大訊息()
-    except Exception as e:
-        logger.error(f'爬取近一週重大訊息失敗，主要係發生{e}！')
 
     日期欄位=['發言日期', '歸屬日期']
     with sqlite3.connect(重大訊息庫) as c:

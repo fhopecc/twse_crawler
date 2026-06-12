@@ -10,14 +10,15 @@ class Test(unittest.TestCase):
         from zhongwen.程式 import 列出函數執行時間表
         import twse_crawler.營收分析
         from zhongwen.表 import 表示
+        蒐整財務資訊()
+        self.assertFalse(True)
+
         股票 = '東生華'
         twse_crawler.營收分析.cache.clear()
-        # 蒐整財務資訊()
         s = 取股票資料最近時間(股票) 
         表示(s) 
         r = 以營收預測次年每股盈餘(股票)
         表示(r) 
-        self.assertFalse(True)
         列出函數執行時間表()
  
 if __name__ == '__main__':

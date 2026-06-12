@@ -18,15 +18,29 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
             若作業時間確有不及，應於每季終了後60日內(5/30、11/29前)補正。
     四、每月15日前會先執行抓取上月營收彙總表更新月營收表資料。
     '''
-    from zhongwen.時 import 今日, 上季, 取季別年數季數, 取日期
-    from datetime import timedelta
-    from zhongwen.表 import 表示
     import twse_crawler.股票基本資料分析
+    from zhongwen.時 import 自起日按日列舉迄今, 本季
+    from zhongwen.表 import 表示
+    import pandas as pd
     下市櫃股票代號 = twse_crawler.股票基本資料分析.取下市櫃股票代號()
+
+    # 更新落後重大訊息
+    logger.info('更新落後重大訊息')
+    from twse_crawler.重大訊息分析 import 載入近一季重大訊息
+    from twse_crawler.重大訊息爬蟲 import 爬取重大訊息
+    import requests
+    df = 載入近一季重大訊息() 
+    最近歸屬日期 = df.歸屬日期.max()
+    try:
+        for 歸屬日期 in 自起日按日列舉迄今(最近歸屬日期 - pd.Timedelta(days=1)):
+            爬取重大訊息(歸屬日期)
+    except requests.exceptions.ChunkedEncodingError as e:
+        logger.error(f"爬取重大訊息發生{e}！")
+
     # 更新落後2季以上之財報數據
+    logger.info('更新落後2季以上之財報數據')
     from twse_crawler.資產負債表分析 import 取資產負債表
     from twse_crawler.現流表分析 import 取現流表
-    from zhongwen.時 import 本季, 上季
     twse_crawler.資產負債表分析.cache.clear()
     df = 取資產負債表()
     df = df[~df.股票代號.isin(下市櫃股票代號)]
@@ -56,6 +70,7 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
                 爬取現流表(應更新季度)
     
     # 更新落後2月以上之月營收
+    logger.info('更新落後2月以上之月營收')
     from twse_crawler.公開資訊觀測站爬蟲 import 抓取月營收彙總表
     from twse_crawler.營收分析 import 取歷月營收表
     from zhongwen.時 import 本月
@@ -73,6 +88,7 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
                 抓取月營收彙總表(本月-lag_mon+1)
 
     # 更新月自結損益
+    logger.info('更新落後2月以上之自結損益')
     from twse_crawler.公開資訊觀測站爬蟲 import 抓取月自結損益彙總表
     from twse_crawler.自結損益 import 取自結損益表
     twse_crawler.自結損益.cache.clear()
@@ -87,6 +103,8 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
             表示(df_lag, 顯示索引=True)
             if not 僅顯示落後資訊不予更新:
                 抓取月自結損益彙總表(本月-lag_mon+1)
+
+     
 
 def 取股票資料最近時間(股票) -> "pandas.Series":
     '''
@@ -131,8 +149,6 @@ def 增加股票分析函數依資料時間更新快取功能(快取檔: "diskca
             if not zhongwen.快取.停止快取:
                 try:
                     快取 = 快取檔[f'{股票分析函數.__name__}({股票})']
-                    表示(快取)
-                    print(最近資料時間)
                     if all(快取[f'最近{i}'] >= 最近資料時間[f'最近{i}'] for i in 資料時間項目):
                         logger.info(f'{股票分析函數.__name__}({股票})->快取值！')
                         return 快取

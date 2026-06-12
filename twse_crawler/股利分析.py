@@ -362,7 +362,6 @@ def 預測股利(股票, 歷年股利=None):
     三、除息交易日為最近一次除息交易日。
     四、如已公布上年度股利，則說明較預測增減情形。
     '''
-    # from twse_crawler.自結損益 import 預測前年至次年每股盈餘 as 依自結損益預測每股盈餘
     from twse_crawler.自結損益 import 以自結損益預測次年每股盈餘, 以自結營利預測次年每股盈餘
     from twse_crawler.營收分析 import 以營收預測次年每股盈餘
     from twse_crawler.營收分析 import 以營收預測稅前淨利及次年每股盈餘
