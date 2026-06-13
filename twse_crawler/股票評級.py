@@ -1,6 +1,7 @@
 from diskcache import Cache
 from pathlib import Path
-import functools
+from zhongwen.快取 import 快取至記憶體
+import zhongwen.快取
 import logging
 logger = logging.getLogger(Path(__file__).stem)
 cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
@@ -261,6 +262,24 @@ def 顯示股票評級彙總表(報酬率下限=0):
     顯示(內容)
     標題 = '股票估值榜'
     張貼錢商品錢(標題, 內容, 標籤=['估計股利指標', '股票榜', '股利趨勢指標'])
+
+@快取至記憶體
+@cache.memoize('取在線分析結果明細', expire=60*10)
+def 取在線分析結果明細(股票=None):
+    '''
+    一、存放於 github gist 的投資績效
+    '''
+    from zhongwen.檔 import 抓取
+    from twse_crawler.股票基本資料分析 import 查股票簡稱
+    import pandas as pd
+    if 股票:
+        股票 = 查股票簡稱(股票)
+        df = 取在線分析結果明細() 
+        s = df.query('公司簡稱.str.contains(@股票)').iloc[0]
+        s.name = s.公司簡稱
+        return s
+    url = 'https://gist.githubusercontent.com/fhopecc/fbc1ce4a57f201a0e9e5cc17ddba0fe4/raw/investment_report.json'
+    return pd.read_json(url, orient='table')
 
 if __name__ == '__main__':
     from zhongwen.程式 import 列出函數執行時間表
