@@ -1,5 +1,5 @@
 '''財報係依法公開財務報告，包含資產負債表、損益表及現流表'''
-from zhongwen.快取 import 增加快取時序分析結果
+from zhongwen.快取 import 增加快取時序分析結果, 快取至記憶體
 from zhongwen.程式 import 通知執行時間
 from diskcache import Cache, Index
 from twse_crawler import 財報爬蟲
@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(Path(__file__).stem)
 cache = Cache(Path.home() / '.twse_crawler' / '快取' / Path(__file__).stem)
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取財報彙總表', expire=12*60*60)
 def 取財報彙總表(股票=None, 個體報表=False):
