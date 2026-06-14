@@ -1,8 +1,11 @@
+from diskcache import Cache
 from pathlib import Path
 import pandas as pd
 import logging
+cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 logger = logging.getLogger(Path(__file__).stem)
 
+@cache.memoize(expire=4*60*60)
 def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     '''
     一、更新落後2期以上之資訊，如落後2季以上之財報，2月以上之月營收。
@@ -24,8 +27,8 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     import pandas as pd
     下市櫃股票代號 = twse_crawler.股票基本資料分析.取下市櫃股票代號()
 
-    # 更新落後重大訊息
-    logger.info('更新落後重大訊息')
+    # 更新重大訊息
+    logger.info('更新重大訊息')
     from twse_crawler.重大訊息分析 import 載入近一季重大訊息
     from twse_crawler.重大訊息爬蟲 import 爬取重大訊息
     import requests
