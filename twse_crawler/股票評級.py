@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(Path(__file__).stem)
 cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 
-def 評級股票(股票, 告示例外=True, 例外為空=False):
+def 評級股票(股票, 告示例外=True, 例外為空=False) -> "pandas.Series":
     '''
     一、股票評級結果：報酬率、預測報酬率說明、分數、評語、近一季重大訊息。
     '''
@@ -31,7 +31,12 @@ def 評級股票(股票, 告示例外=True, 例外為空=False):
         if 例外為空: return pd.Series()
         if 告示例外 and '報酬率' in e.目的:
             raise e
-    r = 彙總分析(股票, [分析經營效率, 分析財務安全, 分析成長性, 取風險扣分項])
+    from twse_crawler.權益報酬率分析 import 分析股東權益報酬率
+    # r = 彙總分析(股票, [分析經營效率, 分析財務安全, 分析成長性, 取風險扣分項])
+    try:
+        r = 分析股東權益報酬率(股票)
+    except ValueError:
+        r = pd.Series({"分數":0, "評語":"不可知"})
     if not r.empty and len(r.評語) > 0:
         分數 = r.分數
         評語 = r.評語
@@ -201,20 +206,16 @@ def 取股票評級彙總表():
     df['分數'] = df.分數.map(lambda n: int(n) if pd.notna(n) else 0)
     return df
 
-def 顯示股票評級彙總表(報酬率下限=0):
+def 顯示股票評級彙總表(報酬率下限=0) -> "pandas.DataFrame":
+    '''一、傳回取股票評級彙總表。'''
     from twse_crawler.股票基本資料分析 import 取股票詳情連結
     from fhopecc.洄瀾打狗人札記 import 張貼錢商品錢
     from zhongwen.文 import 轉樣式表字串
     from zhongwen.表 import 顯示, 重名加序
-    
     import pandas as pd
+
     df = 取股票評級彙總表()
-    json = r'd:\github\investment_report\investment_report.json'
-    if not Path(json).exists():
-        json = r'c:\github\investment_report\investment_report.json'
-    df.to_json(json, orient='table', force_ascii=False, indent=4)
-    import 股票分析
-    股票分析.投資績效.更新在線投資績效明細()
+    dfo = df.copy()
     df.columns = 重名加序(df.columns)
     顯示欄位 = ['公司簡稱', '分數', '總分'
                ,'報酬率', '產業類別', '護城河分數', '預測報酬率說明'
@@ -262,6 +263,7 @@ def 顯示股票評級彙總表(報酬率下限=0):
     顯示(內容)
     標題 = '股票估值榜'
     張貼錢商品錢(標題, 內容, 標籤=['估計股利指標', '股票榜', '股利趨勢指標'])
+    return dfo
 
 @快取至記憶體
 @cache.memoize('取在線分析結果明細', expire=60*10)
@@ -290,5 +292,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     # 蒐整財務資訊()
     # zhongwen.快取.停止快取=True
-    顯示股票評級彙總表(0.05)
+    df = 顯示股票評級彙總表(0.05)
+    from 股票分析.投資績效 import 更新在線股票分析結果
+    更新在線股票分析結果(df)
     列出函數執行時間表()

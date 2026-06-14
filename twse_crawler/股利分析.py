@@ -1,10 +1,9 @@
 from zhongwen.pandas_tools import 可顯示, 製作排行榜
-from zhongwen.快取 import 增加快取時序分析結果
+from zhongwen.快取 import 增加快取時序分析結果, 快取至記憶體
 from zhongwen.程式 import 通知執行時間
 from zhongwen.庫 import 增加定期更新
 from diskcache import Cache, Index
 from pathlib import Path
-import functools
 import logging
 
 DEBUG=False
@@ -13,7 +12,7 @@ logger = logging.getLogger(Path(__file__).stem)
 
 歷史股利分析結果檔 = Index(str(Path.home() / '.twse_crawler' / r'資料庫/股利分派情形分析結果檔'))
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取股利表', expire=24*60*60)
 def 取股利表(股票=None):
@@ -130,7 +129,7 @@ def 取除權息概述(股票):
                 m += f'將於{待除權日數}日後{取民國日期(r.除權交易日, "%M月%d日")}配發股票{r.配股:.2f}元'
     return m
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取歷年股利表', expire=24*60*60)
 def 取歷年股利表(股票=None):
@@ -157,7 +156,7 @@ def 取歷年股利表(股票=None):
                                                      })
     return 歷年股利
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取歷年每股盈餘表', expire=12*60*60)
 def 取歷年每股盈餘表(股票=None):
@@ -192,7 +191,7 @@ def 預測配息率(股票, 歷年股利=None):
     '''
     from twse_crawler.股票基本資料分析 import 查股票簡稱
     from zhongwen.時 import 取民國期間
-    from zhongwen.表 import 顯示
+    from zhongwen.表 import 表示
     from zhongwen.文 import 臚列
     import pandas as pd
     import numpy as np
@@ -250,7 +249,7 @@ def 依損益表預測每股盈餘(股票):
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from zhongwen.時 import 取正式民國日期
     from zhongwen.數 import 取最簡約數
-    from zhongwen.表 import 顯示
+    from zhongwen.表 import 表示
     from zhongwen.文 import 臚列
     import pandas as pd
     預測結果 = pd.Series()
@@ -334,7 +333,7 @@ def 依歷年股利預測股利(股票):
     from twse_crawler.自結損益 import 預測前年至次年周期數據
     from zhongwen.時 import 取正式民國日期
     from zhongwen.數 import 取最簡約數
-    from zhongwen.表 import 數據不足, 顯示
+    from zhongwen.表 import 數據不足, 表示
     from zhongwen.文 import 臚列
     import pandas as pd
     acache.clear()
@@ -351,7 +350,7 @@ def 依歷年股利預測股利(股票):
 
 class 無法預估盈餘(Exception):pass
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 def 預測股利(股票, 歷年股利=None):
     '''
@@ -369,7 +368,7 @@ def 預測股利(股票, 歷年股利=None):
     from twse_crawler.損益表分析 import 取損益表, 取前年至次年各季損益表
     from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from zhongwen.快取 import 刪除指定名稱快取
-    from zhongwen.表 import 顯示, 數據不足
+    from zhongwen.表 import 表示, 數據不足
     from zhongwen.文 import 臚列
     from zhongwen.數 import 取增減百分比
     import pandas as pd
@@ -421,7 +420,7 @@ def 分析歷史股利(歷年股利分派情形, 重新分析=False):
     from twse_crawler.股票基本資料分析 import 查股票簡稱
     from zhongwen.文 import 臚列
     from zhongwen.時 import 取日期
-    from zhongwen.表 import 顯示
+    from zhongwen.表 import 表示
     import pandas as pd
     import numpy as np
     分析結果 = 歷年股利分派情形.iloc[-1]
@@ -454,7 +453,6 @@ def 分析歷史股利(歷年股利分派情形, 重新分析=False):
     df = df.reindex(前年至次年各年股利.index)
     df = df.fillna(前年至次年各年股利)
     前年至次年各年股利 = df
-    # 顯示(df, 顯示索引=True)
 
     預測股利說明 = f'{分析結果.預測每股盈餘說明}，乘{分析結果.預測配息率說明}' 
     年度股利對 = [(d.year, v) for d, v in 前年至次年各年股利.items()] 

@@ -1,4 +1,5 @@
 from zhongwen.程式 import 通知執行時間
+from zhongwen.快取 import 快取至記憶體
 from diskcache import Cache
 from twse_crawler import 財報爬蟲
 from pathlib import Path
@@ -9,7 +10,7 @@ logger = logging.getLogger(Path(__file__).stem)
 
 cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取資產負債表', expire=24*60*60)
 def 取資產負債表(股票=None, 個體報表=False):

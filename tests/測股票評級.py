@@ -10,11 +10,12 @@ class Test(unittest.TestCase):
         from twse_crawler.股票評級 import 取在線分析結果明細
         from zhongwen.表 import 表示
         import zhongwen.快取
+        r = 評級股票('鈊象', 告示例外=True)
+        表示(r)
+        self.assertFalse(True)
         df = 取在線分析結果明細('一零四')
         表示(df)
-        self.assertFalse(True)
         zhongwen.快取.停止快取=True
-        r = 評級股票('6890', 告示例外=True)
 
 if __name__ == '__main__':
     import logging
