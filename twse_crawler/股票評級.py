@@ -32,9 +32,14 @@ def 評級股票(股票, 告示例外=True, 例外為空=False) -> "pandas.Serie
         if 告示例外 and '報酬率' in e.目的:
             raise e
     from twse_crawler.權益報酬率分析 import 分析股東權益報酬率
+    from twse_crawler.現流表分析 import 分析現金流
+    from zhongwen.數 import 取增減數
     # r = 彙總分析(股票, [分析經營效率, 分析財務安全, 分析成長性, 取風險扣分項])
     try:
         r = 分析股東權益報酬率(股票)
+        rc = 分析現金流(股票)
+        r['分數'] += rc['分數']
+        r['評語'] += f'，現流{取增減數(rc.分數)}分'
     except ValueError:
         r = pd.Series({"分數":0, "評語":"不可知"})
     if not r.empty and len(r.評語) > 0:

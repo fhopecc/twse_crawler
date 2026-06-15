@@ -7,7 +7,11 @@ class Test(unittest.TestCase):
     def test(self):
         from twse_crawler.現流表分析 import 取移動年度現流表, cache
         from twse_crawler.現流表分析 import 取現流表, 取累積現流表
+        from twse_crawler.現流表分析 import 分析現金流
         from zhongwen.表 import 表示
+        r = 分析現金流('鈊象')
+        表示(r)
+        self.assertFalse(True)
         cache.clear()
 
         df = 取現流表()
