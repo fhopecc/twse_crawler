@@ -1,3 +1,6 @@
+from zhongwen.程式 import 通知執行時間
+
+@通知執行時間
 def 分析股東權益報酬率(股票) -> 'pandas.Series':
     """
     一、分析股東權益報酬率評分20分。

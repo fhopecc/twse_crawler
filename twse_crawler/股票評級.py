@@ -33,15 +33,20 @@ def 評級股票(股票, 告示例外=True, 例外為空=False) -> "pandas.Serie
             raise e
     from twse_crawler.權益報酬率分析 import 分析股東權益報酬率
     from twse_crawler.現流表分析 import 分析現金流
+    from twse_crawler.資金循環分析 import 分析資金循環天數
     from zhongwen.數 import 取增減數
     # r = 彙總分析(股票, [分析經營效率, 分析財務安全, 分析成長性, 取風險扣分項])
     try:
         r = 分析股東權益報酬率(股票)
         rc = 分析現金流(股票)
-        r['分數'] += rc['分數']
-        r['評語'] += f'，現流{取增減數(rc.分數)}分'
+        rccc = 分析資金循環天數(股票).資金循環惡化嚴重
+        r['分數'] += rc['分數'] * (not rccc)
+        r['評語'] += f'，現流{取增減數(rc.分數)}分，'
+        if rccc:
+            r['評語'] += '，資金循環惡化嚴重'
     except ValueError:
         r = pd.Series({"分數":0, "評語":"不可知"})
+
     if not r.empty and len(r.評語) > 0:
         分數 = r.分數
         評語 = r.評語
@@ -49,6 +54,7 @@ def 評級股票(股票, 告示例外=True, 例外為空=False) -> "pandas.Serie
     if not r2.empty and len(r2.評語) > 0:
         護城河分數 = r2.分數
         護城河評語 = r2.評語
+
 
     edf = 載入近一季重大訊息(股票)
     近一季重大訊息 = "\n".join(
