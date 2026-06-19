@@ -6,8 +6,9 @@ class Test(unittest.TestCase):
     def test(self):
         from zhongwen.表 import 表示
         from twse_crawler.營利率分析 import 分析營利率
-        r = 分析營利率('鈊象')
+        r = 分析營利率('智基')
         表示(r)
+        self.assertFalse(True)
  
 if __name__ == '__main__':
     import logging

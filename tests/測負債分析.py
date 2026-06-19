@@ -7,6 +7,8 @@ class Test(unittest.TestCase):
         from zhongwen.表 import 表示
         from twse_crawler.負債分析 import 分析有息負債
         import twse_crawler.財報分析
+        import twse_crawler.資產負債表分析
+        twse_crawler.資產負債表分析.cache.clear()
         twse_crawler.財報分析.cache.clear()
         r = 分析有息負債('台汽電')
         表示(r)
