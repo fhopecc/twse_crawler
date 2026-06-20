@@ -279,7 +279,7 @@ def 取在線分析結果明細(股票=None):
     if 股票:
         股票 = 查股票簡稱(股票)
         df = 取在線分析結果明細() 
-        s = df.query('公司簡稱.str.contains(@股票)').iloc[0]
+        s = df.query('公司簡稱==@股票').iloc[0]
         s.name = s.公司簡稱
         return s
     url = 'https://gist.githubusercontent.com/fhopecc/fbc1ce4a57f201a0e9e5cc17ddba0fe4/raw/investment_report.json'

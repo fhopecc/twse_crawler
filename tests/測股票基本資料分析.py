@@ -14,7 +14,8 @@ class Test(unittest.TestCase):
         from twse_crawler.股票基本資料分析 import 查股票代號, 查股票簡稱, cache
         from zhongwen.快取 import 刪除指定名稱快取
         # 刪除指定名稱快取(cache, '查股票代號')
-        cache.clear()
+        self.assertEqual(查股票代號('櫻花'), '9911')
+        self.assertEqual(查股票代號('櫻花建'), '2539')
         self.assertEqual(查股票代號('二信股票'), '二信股票')
         self.assertEqual(查股票代號('好樂迪'), '9943')
         self.assertEqual(查股票代號('台通'), '8011')
