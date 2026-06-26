@@ -5,11 +5,10 @@ class Test(unittest.TestCase):
     def test(self):
         from twse_crawler.營收動能分析 import 分析營收動能
         from zhongwen.表 import 表示
-        df = 分析營收動能('立弘')
+        df = 分析營收動能('一零四')
         表示(df)
         self.assertFalse(True)
         
- 
 if __name__ == '__main__':
     import logging
     logging.basicConfig(level=logging.INFO)
