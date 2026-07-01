@@ -10,7 +10,7 @@ class Test(unittest.TestCase):
         import twse_crawler.資產負債表分析
         twse_crawler.資產負債表分析.cache.clear()
         twse_crawler.財報分析.cache.clear()
-        r = 分析有息負債('台汽電')
+        r = 分析有息負債('中鋼')
         表示(r)
  
 if __name__ == '__main__':
