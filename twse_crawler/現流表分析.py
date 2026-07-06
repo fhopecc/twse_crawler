@@ -1,13 +1,13 @@
 from zhongwen.程式 import 通知執行時間
+from zhongwen.快取 import 快取至記憶體
 from diskcache import Cache
 from pathlib import Path
-import functools
 import logging
 
 logger = logging.getLogger(Path(__file__).stem)
 cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取累積現流表', expire=12*60*60)
 def 取累積現流表(股票=None, 個體報表=False):
@@ -78,7 +78,7 @@ def 取單期淨額(歷史累積金額):
     if 應顯示細節者: sys.exit()
     return r
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取現流表', expire=15*24*60*60)
 def 取現流表(股票=None, 個體報表=False):
@@ -119,7 +119,7 @@ def 取移動年度加總(季數據):
     df[ncols] = df[ncols].rolling(window=4).sum()
     return df
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取移動年度現流表', expire=15*24*60*60)
 def 取移動年度現流表(股票=None, 個體報表=False):
@@ -161,7 +161,7 @@ def 取移動年度現流表(股票=None, 個體報表=False):
                        df['其他借款增加'] + df['其他借款減少']
     return df
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取近年現流表', expire=15*24*60*60)
 def 取近年現流表(股票=None, 個體報表=False):
@@ -182,7 +182,7 @@ def 取近年現流表(股票=None, 個體報表=False):
     return df
 
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取年度現流表', expire=12*60*60)
 def 取年度現流表(股票=None, 個體報表=False):

@@ -3,10 +3,14 @@ import unittest
 class Test(unittest.TestCase):
     '依方法名稱字母順序測試'
     def test(self):
-        from twse_crawler.營收動能分析 import 分析營收動能
+        from twse_crawler.營收動能分析 import 分析營收動能, 分析類崑鼎公司
+        import twse_crawler.財報分析
+        import twse_crawler.資產負債表分析
         from zhongwen.表 import 表示
-        df = 分析營收動能('一零四')
-        表示(df)
+        twse_crawler.財報分析.cache.clear()
+        twse_crawler.資產負債表分析.cache.clear()
+        s = 分析類崑鼎公司('崑鼎')
+        print(s)
         self.assertFalse(True)
         
 if __name__ == '__main__':
