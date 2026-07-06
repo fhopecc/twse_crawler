@@ -838,13 +838,13 @@ if __name__ == '__main__':
         if args.stock:
             f = 取財報檔(args.stock)
             cmd = f'start {f}'
-            os.system(cmd) 
+            os.system(cmd)
     elif args.annual:
         if args.stock:
             f = 爬取年報檔(args.stock)
             cmd = f'start {f}'
             print(cmd)
-            os.system(cmd) 
+            os.system(cmd)
     elif args.rebuild_balance:
         以原始資產負債資料庫重建資產負債資料庫()
     elif args.rebuild_cashflow:
