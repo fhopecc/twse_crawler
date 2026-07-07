@@ -11,7 +11,7 @@ class Test(unittest.TestCase):
         # twse_crawler.現流表分析.cache.clear()
         # twse_crawler.資產負債表分析.cache.clear()
         # twse_crawler.財報分析.cache.clear()
-        s = 分析營收動能('中鋼')
+        s = 分析營收動能('崑鼎')
         print(s)
         self.assertFalse(True)
 if __name__ == '__main__':
