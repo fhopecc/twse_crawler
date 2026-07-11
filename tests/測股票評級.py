@@ -7,10 +7,11 @@ class Test(unittest.TestCase):
         from twse_crawler.股票評級 import 評級股票, 分析成長性, 分析經營效率
         from twse_crawler.股票評級 import 取淨利成長領先指標
         from twse_crawler.股票評級 import 取營利成長領先指標, 取業外成長領先指標
-        from twse_crawler.股票評級 import 取在線分析結果明細
+        from twse_crawler.股票評級 import 取在線分析結果明細, 評定基礎分數
         from zhongwen.表 import 表示
         import zhongwen.快取
         r = 評級股票('崑鼎', 告示例外=True)
+        # r = 評定基礎分數('崑鼎')
         表示(r)
         self.assertFalse(True)
         df = 取在線分析結果明細('一零四')
