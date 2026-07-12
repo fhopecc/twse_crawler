@@ -47,11 +47,6 @@ def 取最近上市櫃收盤行情(股票=None):
         if df.empty:
             raise 數據不足(f'{股票簡稱}最近上市櫃收盤行情', 0, 1) 
         return  df
-
-    try:
-        抓取近一週上市櫃收盤行情()    
-    except Exception as e:
-        logger.error(str(e))
     columns = ['交易日期', '證券代號', '證券名稱', '開盤價', '最高價', '最低價', '收盤價']
     df1 = 批次載入(上市每日收盤行情庫, '上市每日收盤行情表', '交易日期', '交易日期', 起始批號=半月前)
     df1 = df1[columns]
@@ -325,9 +320,9 @@ def 預測報酬率(股票, 重新分析=False):
     r['現金股利發放日'] = 現金股利發放日
     return 預測結果
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
     # r = 數值計算股票內部報酬率(1090, [0, 33.4, 36.71])
     # print(r)
     # v = 取現價(0.03, [0, 33.4, 36.71])
     # print(v)
-    cache.clear()
+    # cache.clear()

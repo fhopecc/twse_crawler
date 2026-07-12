@@ -11,7 +11,7 @@ class Test(unittest.TestCase):
         import twse_crawler.財報分析
         twse_crawler.資產負債表分析.cache.clear()
         twse_crawler.財報分析.cache.clear()
-        r = 評定現金週轉天數分數('鈊象')
+        r = 評定現金週轉天數分數('崑鼎')
         表示(r)
 
 if __name__ == '__main__':
