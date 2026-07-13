@@ -4,6 +4,13 @@ import unittest
 
 class Test(unittest.TestCase):
     '依方法名稱字母順序測試'
+    def test(self):
+        from twse_crawler.財報分析 import 分析資產負債科目占比
+        r = 分析資產負債科目占比('中菲')
+        from zhongwen.表 import 表示
+        # r = r[r.index.str.contains('占比')]
+        表示(r, 顯示筆數=1000)
+        self.assertFalse(True)
 
     def test取歷年營收占台積電資本資出比例(self):
         from twse_crawler.財報分析 import 取歷年營收占台積電資本資出比例
@@ -86,5 +93,5 @@ if __name__ == '__main__':
     # 建構財報測例()
     # unittest.main()
     suite = unittest.TestSuite()
-    suite.addTest(Test('test杜邦分析'))
+    suite.addTest(Test('test'))
     unittest.TextTestRunner().run(suite)

@@ -413,7 +413,7 @@ def 評定基礎分數(股票) -> "pandas.Series":
         最終報酬率得分 + 現金週轉天數得分 + 最終營利率得分 - 負債扣分項 - 資產風險扣分
     )
     總基礎得分 = max(0.0, 總基礎得分)
-
+    from twse_crawler.財報分析 import 分析資產負債科目占比
     # 建立動態評語
     評語字串 = [
         f"【{營收動能結果['營收模式']}】",
@@ -421,6 +421,7 @@ def 評定基礎分數(股票) -> "pandas.Series":
         f"營利率定價權得 {最終營利率得分:,.1f} 分",
         f"{現金週轉天數評語}",
         f"{負債評語}"
+        f"{分析資產負債科目占比(股票).前五大科目}"
     ]
 
     if 資產風險扣分 > 0:
@@ -463,10 +464,12 @@ if __name__ == '__main__':
     from zhongwen.程式 import 列出函數執行時間表
     import zhongwen.快取
     from twse_crawler.蒐整財務資訊 import 蒐整財務資訊
+    import twse_crawler.財報分析 
     import logging
     logging.getLogger('googleapiclient').setLevel(logging.CRITICAL)
     logging.basicConfig(level=logging.INFO)
     # 蒐整財務資訊()
+    # twse_crawler.財報分析.cache.clear()
     # zhongwen.快取.停止快取=True
     # cache.clear()
     df = 顯示股票評級彙總表(0.05)

@@ -685,3 +685,20 @@ def 取自由現金流對淨利比(股票):
     df['自由現金流對淨利比'] = df['自由現金流']/df.淨利
     return df.iloc[-1].自由現金流對淨利比
 
+def 分析資產負債科目占比(股票):
+    from twse_crawler.財報爬蟲 import 損益表使用欄位, 資產負債表使用欄位, 現流表使用欄位
+    import pandas as pd
+    r = 取財報彙總表(股票).iloc[-1]
+    資產總計 = r.資產總計
+    上級科目 = ['資產總計占比'
+               ,'負債及權益總計占比', '負債總計占比', '流動負債合計占比']
+    文字欄位 = ['股票代號', '財報類型', '財報季度']
+    for c in [c for c in r.index if c not in 文字欄位+上級科目]:
+        if c in 資產負債表使用欄位:
+            r[f'{c}占比'] = pd.to_numeric(r[c]) / 資產總計
+    占比欄位 = [c for c in r.index if '占比' in c]
+    占比欄位 = [c for c in 占比欄位 if '總計' not in c and '總額' not in c and '合計' not in c]
+    rs = r[占比欄位]
+    rs = rs.sort_values(ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce').fillna(0))   
+    r['前五大科目'] = '、'.join([f'{i}({r:,.0%})' for i, r in zip(rs.iloc[:5].index, rs.iloc[:5].values)])
+    return r
