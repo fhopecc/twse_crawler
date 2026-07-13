@@ -471,7 +471,7 @@ if __name__ == '__main__':
     # 蒐整財務資訊()
     # twse_crawler.財報分析.cache.clear()
     # zhongwen.快取.停止快取=True
-    # cache.clear()
+    cache.clear()
     df = 顯示股票評級彙總表(0.05)
     from 股票分析.投資績效 import 更新在線股票分析結果
     更新在線股票分析結果(df)

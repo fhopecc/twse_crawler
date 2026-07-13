@@ -698,6 +698,7 @@ def 分析資產負債科目占比(股票):
             r[f'{c}占比'] = pd.to_numeric(r[c]) / 資產總計
     占比欄位 = [c for c in r.index if '占比' in c]
     占比欄位 = [c for c in 占比欄位 if '總計' not in c and '總額' not in c and '合計' not in c]
+    占比欄位 = [c for c in 占比欄位 if '成本占比' not in c]
     rs = r[占比欄位]
     rs = rs.sort_values(ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce').fillna(0))   
     r['前五大科目'] = '、'.join([f'{i}({r:,.0%})' for i, r in zip(rs.iloc[:5].index, rs.iloc[:5].values)])
