@@ -8,6 +8,9 @@ class Test(unittest.TestCase):
         import twse_crawler.資產負債表分析
         import twse_crawler.財報分析
         from twse_crawler.財報分析 import 分析資產負債科目占比
+        twse_crawler.資產負債表分析.cache.clear()
+        twse_crawler.財報分析.cache.clear()
+
         r = 分析資產負債科目占比('1102')
         from zhongwen.表 import 表示
         # r = r[r.index.str.contains('占比')]
