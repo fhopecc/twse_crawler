@@ -22,11 +22,12 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     四、每月15日前會先執行抓取上月營收彙總表更新月營收表資料。
     '''
     import twse_crawler.股票基本資料分析
+    from twse_crawler.行情分析 import 抓取近一週上市櫃收盤行情
     from zhongwen.時 import 自起日按日列舉迄今, 本季
     from zhongwen.表 import 表示
     import pandas as pd
     下市櫃股票代號 = twse_crawler.股票基本資料分析.取下市櫃股票代號()
-
+    抓取近一週上市櫃收盤行情()
     # 更新重大訊息
     logger.info('更新重大訊息')
     from twse_crawler.重大訊息分析 import 載入近一季重大訊息

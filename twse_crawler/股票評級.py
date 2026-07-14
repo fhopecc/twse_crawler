@@ -462,16 +462,18 @@ def 評定基礎分數(股票) -> "pandas.Series":
 
 if __name__ == '__main__':
     from zhongwen.程式 import 列出函數執行時間表
-    import zhongwen.快取
     from twse_crawler.蒐整財務資訊 import 蒐整財務資訊
     import twse_crawler.財報分析 
+    import twse_crawler.資產負債表分析 
+    import zhongwen.快取
     import logging
     logging.getLogger('googleapiclient').setLevel(logging.CRITICAL)
     logging.basicConfig(level=logging.INFO)
-    # 蒐整財務資訊()
+    # twse_crawler.資產負債表分析.cache.clear()
     # twse_crawler.財報分析.cache.clear()
     # zhongwen.快取.停止快取=True
-    cache.clear()
+    # cache.clear()
+    # 蒐整財務資訊()
     df = 顯示股票評級彙總表(0.05)
     from 股票分析.投資績效 import 更新在線股票分析結果
     更新在線股票分析結果(df)

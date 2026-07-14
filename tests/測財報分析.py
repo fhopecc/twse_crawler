@@ -5,8 +5,10 @@ import unittest
 class Test(unittest.TestCase):
     '依方法名稱字母順序測試'
     def test(self):
+        import twse_crawler.資產負債表分析
+        import twse_crawler.財報分析
         from twse_crawler.財報分析 import 分析資產負債科目占比
-        r = 分析資產負債科目占比('中菲')
+        r = 分析資產負債科目占比('1102')
         from zhongwen.表 import 表示
         # r = r[r.index.str.contains('占比')]
         表示(r, 顯示筆數=1000)
