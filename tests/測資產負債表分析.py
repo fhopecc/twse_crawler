@@ -10,7 +10,7 @@ class Test(unittest.TestCase):
         from twse_crawler.資產負債表分析 import 分析骯髒科目, 分析負債
         from twse_crawler.資產負債表分析 import 分析客戶保證金
         from twse_crawler.資產負債表分析 import 取資產負債表
-        from twse_crawler.負債分析 import 分析有息負債
+        from twse_crawler.負債分析 import 分析負債結構
         import twse_crawler
         from zhongwen.表 import 顯示, 表示
         r = 分析有息負債('一零四')

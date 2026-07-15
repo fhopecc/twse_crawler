@@ -686,20 +686,74 @@ def 取自由現金流對淨利比(股票):
     return df.iloc[-1].自由現金流對淨利比
 
 def 分析資產負債科目占比(股票):
+    '''
+    一、各科目占比。
+    二、前五大科目。
+    三、無形資產與淨值比是否偏高
+    四、採用權益法之投資占比是否偏高
+    '''
     from twse_crawler.財報爬蟲 import 損益表使用欄位, 資產負債表使用欄位, 現流表使用欄位
+    from twse_crawler.股票基本資料分析 import 查股票簡稱
     import pandas as pd
+    import re
     r = 取財報彙總表(股票).iloc[-1]
     資產總計 = r.資產總計
-    上級科目 = ['資產總計占比'
-               ,'負債及權益總計占比', '負債總計占比', '流動負債合計占比']
-    文字欄位 = ['股票代號', '財報類型', '財報季度']
-    for c in [c for c in r.index if c not in 文字欄位+上級科目]:
-        if c in 資產負債表使用欄位:
-            r[f'{c}占比'] = pd.to_numeric(r[c]) / 資產總計
-    占比欄位 = [c for c in r.index if '占比' in c]
-    占比欄位 = [c for c in 占比欄位 if '總計' not in c and '總額' not in c and '合計' not in c]
-    占比欄位 = [c for c in 占比欄位 if '成本占比' not in c]
-    rs = r[占比欄位]
-    rs = rs.sort_values(ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce').fillna(0))   
-    r['前五大科目'] = '、'.join([f'{i}({r:,.0%})' for i, r in zip(rs.iloc[:5].index, rs.iloc[:5].values)])
+    # cs 係應計算占比之科目 
+    pat = r"合計|總計|總額|股票代號|財報類型|財報季度|單位：股"
+    cs = [c for c in r.index if not bool(re.search(pat, c)) and c in 資產負債表使用欄位] 
+     # p 存放各項科目占比，簡稱源自占比之英文 proportion。 
+    p = pd.Series()
+    for c in cs:
+        p[f'{c}占比'] = pd.to_numeric(r[c]) / 資產總計
+    ps = p.sort_values(ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce').fillna(0))   
+    p['前五大科目'] = '、'.join([f'{i}({r:,.0%})' for i, r in zip(ps.iloc[:5].index, ps.iloc[:5].values)])
+    # ===========
+    # 資產風險指標
+    # ===========
+    最新無形資產 = r["無形資產"] if "無形資產" in r else 0
+    最新權益投資 = (
+        r["採用權益法之投資"] if "採用權益法之投資" in r else 0
+    )
+    最新股東權益 = r["權益總計"]
+    最新總資產 = r["資產總計"]
+
+    無形資產與淨值比 = 最新無形資產 / 最新股東權益 if 最新股東權益 > 0 else 0
+    from twse_crawler.營收動能分析 import 分析營收動能
+    if 分析營收動能(股票).營收模式!='類崑鼎公司' and 無形資產與淨值比 > 0.15:
+        p['無形資產與淨值比是否偏高'] = True
+    else:
+        p['無形資產與淨值比是否偏高'] = False
+
+    if p.採用權益法之投資占比 > 0.20:
+        p['採用權益法之投資占比是否偏高'] = True
+    else:
+        p['採用權益法之投資占比是否偏高'] = False
+    p = pd.concat([r.loc[['股票代號', '財報類型', '財報季度']], p])
+    p.name = 查股票簡稱(r.股票代號)
+    return p
+
+def 評定資產風險扣分(股票):
+    '''
+    一、資產風險扣分，最高扣 5 分。
+    二、評語。
+    '''
+    from zhongwen.文 import 臚列
+    r = 分析資產負債科目占比(股票)
+    資產風險扣分 = 0
+    m = []
+
+    if r.無形資產與淨值比是否偏高:
+        資產風險扣分 += 2
+        m += ['無形資產與淨值比偏高，存有商譽減損風險']
+
+    if r.採用權益法之投資占比是否偏高:
+        資產風險扣分 += 3
+        m += ['採用權益法之投資占比偏高，可能隱藏表外虧損實體']
+
+    r['資產風險扣分'] = max(0, min(5, 資產風險扣分))
+    if len(m) > 0:
+        m = [f'【資產風險扣{資產風險扣分}分】主要係' + 臚列(m)]
+    m.append(f'【前五大科目】：{r.前五大科目}')
+    r['評語'] = '；'.join(m) 
     return r
+

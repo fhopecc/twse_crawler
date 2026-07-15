@@ -10,7 +10,7 @@ class Test(unittest.TestCase):
         from twse_crawler.股票評級 import 取在線分析結果明細, 評定基礎分數
         from zhongwen.表 import 表示
         import zhongwen.快取
-        r = 評級股票('2227', 告示例外=True)
+        r = 評級股票('亞泥', 告示例外=True)
         # r = 評定基礎分數('崑鼎')
         表示(r)
         self.assertFalse(True)
