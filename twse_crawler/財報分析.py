@@ -699,7 +699,7 @@ def 分析資產負債科目占比(股票):
     r = 取財報彙總表(股票).iloc[-1]
     資產總計 = r.資產總計
     # cs 係應計算占比之科目 
-    pat = r"合計|總計|總額|股票代號|財報類型|財報季度|單位：股"
+    pat = r"合計|總計|總額|股票代號|財報類型|財報季度|財報日期|單位：股"
     cs = [c for c in r.index if not bool(re.search(pat, c)) and c in 資產負債表使用欄位] 
      # p 存放各項科目占比，簡稱源自占比之英文 proportion。 
     p = pd.Series()
