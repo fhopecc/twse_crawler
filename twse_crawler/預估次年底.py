@@ -1514,7 +1514,6 @@ def 預估至次年底每季值乙式(
     三、利用 Optuna 最小化滾動盲測的 mape，動態尋找最佳回訓練記憶視窗大小。
     四、底層採用 Theta Model 預測模型，全方位加入空值防禦，適合業外損益等高波動科目。
     """
-    # 1. 於函式內部進行套件導入
     import warnings
     import numpy as np
     import pandas as pd
@@ -1529,7 +1528,6 @@ def 預估至次年底每季值乙式(
     # 🎯 2. 數據型態檢查、防禦與自動對齊 (徹底相容 Q-DEC 頻率陷阱)
     # =====================================================================
     是季度索引 = isinstance(歷季數值.index, pd.PeriodIndex) and 歷季數值.index.freqstr.startswith('Q')
-    
     if not 是季度索引:
         try:
             歷季數值.index = pd.to_datetime(歷季數值.index).to_period('Q')
@@ -1578,26 +1576,21 @@ def 預估至次年底每季值乙式(
                 預測值 = 單季預測結果.values[0]
                 if pd.isna(預測值) or np.isinf(預測值):
                     return float('inf')
-                # 逼近 AIC 計算
-                k = 6
-                n = len(y_訓練)
-                殘差 = y_訓練 - 模型擬合.fittedvalues
-                mse = np.mean(殘差 ** 2)
-                模型_aic = 2 * k + n * np.log(mse + 1e-8)
-                累加_aic += 模型_aic
+                # 計算該步的 MAPE (加入 1e-5 避免分母為零)
+                單步_mape = abs((真實值 - 預測值) / (真實值 + 1e-5))
+                累加_mape += 單步_mape
                 有效回測步數 += 1
             except:
                 return float('inf')
         if 有效回測步數 < 回測季數:
             return float('inf')
-        return 累加_aic / 有效回測步數
+        return 累加_mape / 有效回測步數
 
     # =====================================================================
     # 🚀 5. 啟動 Optuna 最佳化尋找最優視窗
     # =====================================================================
     研究工廠 = optuna.create_study(direction='minimize')
     研究工廠.optimize(objective, n_trials=20)
-    
     最佳參數 = 研究工廠.best_params
     最佳視窗 = 最佳參數.get('window_size', len(y_原始) - 回測季數)
 
