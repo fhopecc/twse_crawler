@@ -9,6 +9,7 @@ class Test(unittest.TestCase):
         from twse_crawler.預估次年底 import 預估至次年底每季值
         from twse_crawler.預估次年底 import 以外部季數據預估次年底各月值
         from twse_crawler.預估次年底 import 以外部季數據預估次年底各月值乙式
+        from twse_crawler.預估次年底 import 預估至次年底每季值乙式
         from zhongwen.表 import 表示
         from twse_crawler.鉛價分析 import 取鉛價
         from twse_crawler.財報分析 import 取財報彙總表
@@ -16,8 +17,13 @@ class Test(unittest.TestCase):
         from twse_crawler.營收分析 import 以營收預測次年每股盈餘
         from twse_crawler.鉛價分析 import 以鉛價預測次年每股盈餘, cache
         from twse_crawler.營收分析 import 取歷月營收表
+        from twse_crawler.損益表分析 import 以淨利預測次年每股盈餘, 取損益表
         from zhongwen import 快取
         import pandas as pd
+        h = 取損益表('一零四')
+        r = 預估至次年底每季值乙式(h.淨利)
+        表示(r)
+        self.assertFalse(True)
         股票 = '一零四'
         h = 取歷月營收表(股票)
         q = 取資產負債表(股票)
