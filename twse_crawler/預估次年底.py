@@ -641,7 +641,7 @@ def 預估至次年底每季值(
     二、利用 Optuna 最小化滾動盲測的 AIC，動態尋找最佳「歷史記憶視窗大小」。
     三、底層採用 Holt-Winters 季度指數平滑模型，全方位加入空值防禦，適合業外損益等高波動科目。
     """
-    # 1. 於函式內部進行套件導入 (維持高內聚設計)
+    # 1. 於函式內部進行套件導入
     import warnings
     import numpy as np
     import pandas as pd
@@ -1505,4 +1505,199 @@ def 以外部季數據預估次年底各月值乙式(
         "最近歷史值同比": 最近歷史值同比,
         "首期預估值同比": 首期預估值同比
     })
+    return 預測結果
+
+def 預估至次年底每季值乙式(
+    歷季數值: "pd.Series",
+    單位 = '元'
+) -> "pd.Series":
+    """
+    一、預測結果：預估各季值。
+    二、利用 Optuna 最小化滾動盲測的 AIC，動態尋找最佳「歷史記憶視窗大小」。
+    三、底層採用 Theta Model 預測模型，全方位加入空值防禦，適合業外損益等高波動科目。
+    """
+    # 1. 於函式內部進行套件導入
+    import warnings
+    import numpy as np
+    import pandas as pd
+    import optuna
+    from statsmodels.tsa.forecasting.theta import ThetaModel
+    from sklearn.metrics import mean_squared_error
+
+    warnings.filterwarnings("ignore")
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+    # =====================================================================
+    # 🎯 2. 數據型態檢查、防禦與自動對齊 (徹底相容 Q-DEC 頻率陷阱)
+    # =====================================================================
+    是季度索引 = isinstance(歷季數值.index, pd.PeriodIndex) and 歷季數值.index.freqstr.startswith('Q')
+    
+    if not 是季度索引:
+        try:
+            歷季數值.index = pd.to_datetime(歷季數值.index).to_period('Q')
+        except Exception as e:
+            raise ValueError(
+                f"歷季數值索引無法轉換為季度型態，實際提供資料索引為 {type(歷季數值.index)}、"
+                f"{getattr(歷季數值.index, 'freqstr', '無頻率')}，錯誤原因: {e}"
+            )
+        
+    y_原始 = 歷季數值.astype(float)
+    y_原始.index = y_原始.index.asfreq('Q')
+    
+    回測季數 = 4  # 採取 4 季（完整一年）進行滾動盲測
+
+    # 3. 動態識別並建構預測時間軸（向未來外推至次年底）
+    最近季度 = y_原始.index[-1]
+    from zhongwen.時 import 今年數
+    次年數 = 今年數 + 1
+    
+    未來下一季 = 最近季度 + 1
+    次年底最後一季 = pd.Period(f"{次年數}Q4", freq='Q')
+    未來季時軸 = pd.period_range(start=未來下一季, end=次年底最後一季, freq='Q')
+    外推步數 = len(未來季時軸)
+
+    # =====================================================================
+    # 🎯 4. 定義 Optuna 最佳化目標函數 (最小化滾動盲測下的 AIC)
+    # =====================================================================
+    def objective(trial):
+        min_window = 12  
+        max_window = len(y_原始) - 回測季數
+        if max_window <= min_window:
+            window_size = min_window
+        else:
+            window_size = trial.suggest_int('window_size', min_window, max_window)
+
+        累加_aic = 0.0
+        有效回測步數 = 0
+        
+        for i in range(回測季數):
+            當前終點 = len(y_原始) - 回測季數 + i
+            訓練起點 = max(0, 當前終點 - window_size)
+            
+            y_訓練 = y_原始.iloc[訓練起點:當前終點]
+            
+            try:
+                模型 = ThetaModel(y_訓練, period=4, deseasonalize=True)
+                模型擬合 = 模型.fit()
+                
+                單季預測結果 = 模型擬合.forecast(1)
+                預測值 = 單季預測結果.values[0]
+                
+                if pd.isna(預測值) or np.isinf(預測值):
+                    return float('inf')
+                    
+                # 逼近 AIC 計算
+                k = 6 
+                n = len(y_訓練)
+                殘差 = y_訓練 - 模型擬合.fittedvalues
+                mse = np.mean(殘差 ** 2)
+                模型_aic = 2 * k + n * np.log(mse + 1e-8)
+                
+                累加_aic += 模型_aic
+                有效回測步數 += 1
+            except:
+                return float('inf')
+                
+        if 有效回測步數 < 回測季數:
+            return float('inf')
+
+        return 累加_aic / 有效回測步數
+
+    # =====================================================================
+    # 🚀 5. 啟動 Optuna 最佳化尋找最優視窗
+    # =====================================================================
+    研究工廠 = optuna.create_study(direction='minimize')
+    研究工廠.optimize(objective, n_trials=20)
+    
+    最佳參數 = 研究工廠.best_params
+    最佳視窗 = 最佳參數.get('window_size', len(y_原始) - 回測季數)
+
+    # =====================================================================
+    # 📊 6. 🛠️ 重新實地回測：計算最終確定的驗證指標 (rmse 與 mape)
+    # =====================================================================
+    最終回測預測值 = []
+    for i in range(回測季數):
+        當前終點 = len(y_原始) - 回測季數 + i
+        訓練起點 = max(0, 當前終點 - 最佳視窗)
+        y_訓練 = y_原始.iloc[訓練起點:當前終點]
+        
+        try:
+            模型 = ThetaModel(y_訓練, period=4, deseasonalize=True)
+            模型擬合 = 模型.fit()
+            預測值 = 模型擬合.forecast(1).values[0]
+            最終回測預測值.append(預測值)
+        except:
+            最終回測預測值.append(np.nan)
+
+    最終回測_陣列 = np.array(最終回測預測值)
+    真實值 = y_原始.iloc[-回測季數:]
+
+    # 檢查回測值是否有效，若有效則計算指標，否則安全填充為 np.nan
+    if len(最終回測_陣列) == 回測季數 and np.isfinite(最終回測_陣列).all():
+        mape = float(np.mean(np.abs((真實值 - 最終回測_陣列) / (真實值 + 1e-5))))
+        rmse = float(np.sqrt(mean_squared_error(真實值, 最終回測_陣列)))
+    else:
+        mape = np.nan
+        rmse = np.nan
+
+    # =====================================================================
+    # 7. 擬合最終 Theta 預估模型（使用最優記憶視窗）
+    # =====================================================================
+    最終訓練起點 = max(0, len(y_原始) - 最佳視窗)
+    y_最終訓練 = y_原始.iloc[最終訓練起點:]
+    
+    最終模型 = ThetaModel(y_最終訓練, period=4, deseasonalize=True)
+    最終模型擬合 = 最終模型.fit()
+    
+    # 8. 外推未來預測值至次年底
+    預估季_陣列 = 最終模型擬合.forecast(外推步數)
+    
+    # 🌟 關鍵防禦四：財務保守原則
+    if 預估季_陣列.isna().any() or np.isinf(預估季_陣列.values).any():
+        安全填補值 = y_最終訓練.tail(4).mean()
+        安全填補值 = 安全填補值 if pd.notna(安全填補值) else 0.0
+        預估季_陣列 = 預估季_陣列.fillna(安全填補值).replace([np.inf, -np.inf], 安全填補值)
+        
+    預估季_序列 = pd.Series(預估季_陣列.values, index=未來季時軸)
+
+    # =====================================================================
+    # 📊 9. 整合與計算各項延伸統計指標
+    # =====================================================================
+    預估各季全序列 = pd.concat([y_原始, 預估季_序列])
+    
+    模型參數字典 = {}
+    try:
+        模型參數字典["b0"] = 最終模型擬合.model_params.iloc[0] if hasattr(最終模型擬合, 'model_params') else None
+        模型參數字典["alpha"] = 最終模型擬合.model_params.iloc[1] if hasattr(最終模型擬合, 'model_params') and len(最終模型擬合.model_params) > 1 else None
+    except:
+        模型參數字典["info"] = "無法全面提取 Theta 參數"
+    
+    if len(y_原始) > 4:
+        最近歷史值分母 = y_原始.iloc[-5]
+        最近歷史值同比 = (y_原始.iloc[-1] - 最近歷史值分母) / 最近歷史值分母 if 最近歷史值分母 != 0 else np.nan
+    else:
+        最近歷史值同比 = np.nan
+        
+    if len(y_原始) >= 3:
+        首期預估值分母 = y_原始.iloc[-4]
+        首期預估值同比 = (預估季_序列.iloc[0] - 首期預估值分母) / 首期預估值分母 if 首期預估值分母 != 0 else np.nan
+    else:
+        首期預估值同比 = np.nan
+
+    # 10. 傳回結果 Series
+    預測結果 = pd.Series({
+        "預估各季值": 預估各季全序列,
+        "rmse": rmse,
+        "mape": mape,
+        "歷史值數量": len(y_原始),
+        "預估值數量": 外推步數,
+        "回測資料數": 回測季數,
+        "模型名稱": "Theta Method (Statsmodels)",
+        "模型參數": 模型參數字典,
+        "最近歷史值時間": 最近季度,
+        "最後預估值時間": 次年底最後一季,
+        "最近歷史值同比": 最近歷史值同比,
+        "首期預估值同比": 首期預估值同比
+    })
+    
     return 預測結果

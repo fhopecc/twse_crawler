@@ -13,13 +13,16 @@ class Test(unittest.TestCase):
         from twse_crawler.損益表分析 import 預估業外損益
         from twse_crawler.股票基本資料分析 import 查股票代號, cache as cacheb
         from twse_crawler.損益表分析 import 檢測營收及毛利率關係
+        from twse_crawler.損益表分析 import 以淨利預測次年每股盈餘
         from zhongwen.快取 import 刪除指定名稱快取
         from zhongwen.表 import 表示
         import twse_crawler
-        twse_crawler.損益表分析.cache.clear()
-        r = 檢測營收及毛利率關係('泰銘')
+        # twse_crawler.損益表分析.cache.clear()
+        r = 以淨利預測次年每股盈餘('數字')
         表示(r)
         self.assertFalse(True)
+        r = 檢測營收及毛利率關係('泰銘')
+        表示(r)
         r = 預估業外損益('數字')
         表示(r, 顯示索引=True)
         必須欄位 = set(['股票代號', '財報類型', '財報日期'])
@@ -29,7 +32,6 @@ class Test(unittest.TestCase):
         df = 取移動年度損益表()
         self.assertTrue(必須欄位.issubset(set(df.columns)))
 
-        
 if __name__ == '__main__':
     from twse_crawler.損益表分析 import cache
     from zhongwen.快取 import 刪除指定名稱快取
