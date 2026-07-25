@@ -10,7 +10,7 @@ class Test(unittest.TestCase):
         import twse_crawler.資產負債表分析
         # twse_crawler.資產負債表分析.cache.clear()
         # twse_crawler.財報分析.cache.clear()
-        r = 評定負債結構分數('崑鼎')
+        r = 評定負債結構分數('台汽電')
         表示(r)
         self.assertFalse(True)
 

@@ -57,7 +57,7 @@ def 載入近一季重大訊息(股票=None):
     from twse_crawler.股票基本資料分析 import 查股票代號, 查股票簡稱
     from zhongwen.表 import 顯示, 數據不足
     from zhongwen.庫 import 轉儲存字串
-    from zhongwen.時 import 一季前 
+    from zhongwen.時 import 一季前
     import sqlite3
     import pandas as pd
 

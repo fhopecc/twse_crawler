@@ -9,7 +9,7 @@ class Test(unittest.TestCase):
         from twse_crawler.現流表分析 import 取現流表, 取累積現流表
         from twse_crawler.現流表分析 import 分析現金流
         from zhongwen.表 import 表示
-        r = 分析現金流('鈊象')
+        r = 分析現金流('崑鼎')
         表示(r)
         self.assertFalse(True)
         cache.clear()
