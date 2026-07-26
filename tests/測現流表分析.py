@@ -8,11 +8,13 @@ class Test(unittest.TestCase):
         from twse_crawler.現流表分析 import 取移動年度現流表, cache
         from twse_crawler.現流表分析 import 取現流表, 取累積現流表
         from twse_crawler.現流表分析 import 分析現金流
+        from twse_crawler.財報分析 import 取財報彙總表
         from zhongwen.表 import 表示
+        import twse_crawler.財報分析
+        twse_crawler.財報分析.cache.clear()
         r = 分析現金流('崑鼎')
         表示(r)
         self.assertFalse(True)
-        cache.clear()
 
         df = 取現流表()
         必須欄位 = set(['股票代號', '財報日期'])
