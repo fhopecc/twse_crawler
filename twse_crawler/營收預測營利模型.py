@@ -1,31 +1,45 @@
-def calculate_mase(y_true, y_pred, y_train, seasonal_period=1):
-    """計算 MASE / Seasonally MASE (sMASE)"""
-    import numpy as np
+import numpy as np
+import optuna
+import pandas as pd
+import statsmodels.api as sm
 
+
+def calculate_wape(y_true, y_pred, y_train, seasonal_period=1):
+    """計算 OLS 模型與 Naive 模型的 WAPE，並比較 OLS 改善了多少
+
+    分母皆採用 sum(|y_true|)
+    - seasonal_period = 1  : 一般 WAPE (Naive 為上一期 y_{t-1})
+    - seasonal_period = 4  : 季節性 sWAPE (Naive 為去年同期 y_{t-4})
+    """
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
     y_train = np.array(y_train)
 
-    mae_model = np.mean(np.abs(y_true - y_pred))
+    sum_abs_y = np.sum(np.abs(y_true))
+    if sum_abs_y == 0:
+        return np.nan, np.nan, np.nan
 
+    # 1. 計算 OLS 模型之 WAPE
+    wape_ols = np.sum(np.abs(y_true - y_pred)) / sum_abs_y
+
+    # 2. 計算 Naive 模型預測值與 WAPE
+    # 這裡從歷史訓練集 y_train 取出對應的前 1 期或前 4 期真實值
     m = seasonal_period
-    if len(y_train) <= m:
-        m = 1
+    # 針對步階驗證 (Walk-forward)，y_train 的最後 m 個元素即為 Naive 預測基準
+    y_naive = y_train[-m:] if len(y_train) >= m else y_train[-1:]
 
-    naive_errors = np.abs(y_train[m:] - y_train[:-m])
-    mae_naive = np.mean(naive_errors)
+    # 若測試集點數與 naive 長度不一（一般逐步驗證為 1 點），取最後一個對應值
+    y_naive_pred = y_naive[-len(y_true) :]
+    wape_naive = np.sum(np.abs(y_true - y_naive_pred)) / sum_abs_y
 
-    if mae_naive == 0 or np.isnan(mae_naive):
-        return np.nan
+    # 3. 計算 OLS 較 Naive 改善多少 (提升百分點/幅度)
+    wape_improvement = wape_naive - wape_ols
 
-    return mae_model / mae_naive
+    return wape_ols, wape_naive, wape_improvement
 
 
 def detect_data_pattern(y_series, seasonal_period=4):
     """備援機制：自動偵測歷史數據模式，回傳 'seasonal' (季節性) 或 'growth' (成長型/單調趨勢型)"""
-    import numpy as np
-    import statsmodels.api as sm
-
     y = np.array(y_series)
     n = len(y)
 
@@ -55,7 +69,7 @@ def detect_data_pattern(y_series, seasonal_period=4):
 
 
 # =====================================================================
-# 1. 模型訓練與優化函數：回傳 pd.Series
+# 1. 模型訓練與優化函數 (改用 WAPE / sWAPE 評估)
 # =====================================================================
 def 取季營收預測營利模型(
     歷季財報,
@@ -64,17 +78,11 @@ def 取季營收預測營利模型(
     優化試驗次數=30,
     指定誤差衡量指標=None,
 ):
-    """分析歷史損益資料，同時評估 MASE 與 sMASE，優先採用誤差最小者；
+    """分析歷史損益資料，同時評估 WAPE 與 sWAPE，優先採用誤差最小者；
 
-    若無法比對則自動以數據模式備援，尋找最佳歷史視窗並擬合 OLS 模型。
-
+    計算 OLS 模型的 WAPE 及其相較於 Naive 模型的改善程度。
     回傳包含模型與參數的 pd.Series 物件。
     """
-    import numpy as np
-    import optuna
-    import pandas as pd
-    import statsmodels.api as sm
-
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
     df_pnl = 歷季財報.copy().sort_values("財報季度")
@@ -96,21 +104,24 @@ def 取季營收預測營利模型(
         else None
     )
 
-    if user_metric in ["mase", "smase"]:
+    if user_metric in ["wape", "swape"]:
         target_metrics = [user_metric]
     else:
-        target_metrics = ["mase", "smase"]
+        target_metrics = ["wape", "swape"]
 
     metric_results = {}
 
     for metric in target_metrics:
-        period = 4 if metric == "smase" else 1
+        period = 4 if metric == "swape" else 1
 
         def objective(trial):
             window_size = trial.suggest_int(
                 "window_size", actual_min_window, actual_max_window
             )
-            scores = []
+
+            y_true_list = []
+            y_pred_list = []
+            y_naive_list = []
 
             for i in range(window_size, n_samples):
                 X_train = rev_hist[i - window_size : i]
@@ -119,74 +130,91 @@ def 取季營收預測營利模型(
                 X_test = rev_hist[i]
                 y_test = cost_hist[i]
 
+                # OLS 擬合
                 X_train_const = sm.add_constant(X_train)
                 ols = sm.OLS(y_train, X_train_const).fit()
-
                 pred_cost = ols.params[0] + ols.params[1] * X_test
 
-                score = calculate_mase(
-                    y_true=[y_test],
-                    y_pred=[pred_cost],
-                    y_train=y_train,
-                    seasonal_period=period,
+                # Naive 基準預測值 (前 1 期或前 4 期)
+                naive_cost = (
+                    y_train[-period]
+                    if len(y_train) >= period
+                    else y_train[-1]
                 )
 
-                if not np.isnan(score):
-                    scores.append(score)
+                y_true_list.append(y_test)
+                y_pred_list.append(pred_cost)
+                y_naive_list.append(naive_cost)
 
-            return np.mean(scores) if len(scores) > 0 else float("inf")
+            # 計算整個滾動驗證區間的整體 WAPE（分子與分母先加總再相除）
+            sum_abs_y = np.sum(np.abs(y_true_list))
+            if sum_abs_y == 0:
+                return float("inf")
+
+            wape_ols = np.sum(np.abs(np.array(y_true_list) - np.array(y_pred_list))) / sum_abs_y
+            wape_naive = np.sum(np.abs(np.array(y_true_list) - np.array(y_naive_list))) / sum_abs_y
+            wape_imp = wape_naive - wape_ols
+
+            # 暫存本輪結果細節
+            trial.set_user_attr("wape_ols", wape_ols)
+            trial.set_user_attr("wape_naive", wape_naive)
+            trial.set_user_attr("wape_imp", wape_imp)
+
+            return wape_ols
 
         study = optuna.create_study(direction="minimize")
         study.optimize(objective, n_trials=優化試驗次數)
 
+        best_trial = study.best_trial
         metric_results[metric] = {
-            "best_window": study.best_params["window_size"],
-            "best_score": study.best_value,
+            "best_window": best_trial.params["window_size"],
+            "best_score": best_trial.value,  # 此即為 wape_ols
+            "wape_naive": best_trial.user_attrs.get("wape_naive", np.nan),
+            "wape_imp": best_trial.user_attrs.get("wape_imp", np.nan),
         }
 
-    # 判定邏輯：以誤差小者優先
-    if user_metric in ["mase", "smase"]:
+    # 指標判定邏輯
+    if user_metric in ["wape", "swape"]:
         selected_metric = user_metric.upper()
-        best_overall_window = metric_results[user_metric]["best_window"]
-        best_overall_score = metric_results[user_metric]["best_score"]
+        res = metric_results[user_metric]
         selection_reason = "使用者指定指標"
     else:
-        mase_score = metric_results["mase"]["best_score"]
-        smase_score = metric_results["smase"]["best_score"]
+        wape_score = metric_results["wape"]["best_score"]
+        swape_score = metric_results["swape"]["best_score"]
 
         if (
-            not np.isinf(mase_score)
-            and not np.isinf(smase_score)
-            and abs(mase_score - smase_score) > 0.01
+            not np.isinf(wape_score)
+            and not np.isinf(swape_score)
+            and abs(wape_score - swape_score) > 0.005
         ):
-            if mase_score < smase_score:
-                selected_metric = "MASE"
-                best_overall_window = metric_results["mase"]["best_window"]
-                best_overall_score = mase_score
+            if wape_score < swape_score:
+                selected_metric = "WAPE"
+                res = metric_results["wape"]
                 selection_reason = (
-                    f"MASE 誤差率 ({mase_score:.4f}) 小於 sMASE ({smase_score:.4f})"
+                    f"WAPE 誤差率 ({wape_score:.2%}) 小於 sWAPE ({swape_score:.2%})"
                 )
             else:
-                selected_metric = "SMASE"
-                best_overall_window = metric_results["smase"]["best_window"]
-                best_overall_score = smase_score
-                selection_reason = f"sMASE 誤差率 ({smase_score:.4f}) 小於 MASE ({mase_score:.4f})"
+                selected_metric = "sWAPE"
+                res = metric_results["swape"]
+                selection_reason = (
+                    f"sWAPE 誤差率 ({swape_score:.2%}) 小於 WAPE ({wape_score:.2%})"
+                )
         else:
             detected_pattern = detect_data_pattern(df_pnl["營利"].values)
             if detected_pattern == "seasonal":
-                selected_metric = "SMASE"
-                best_overall_window = metric_results["smase"]["best_window"]
-                best_overall_score = smase_score
+                selected_metric = "sWAPE"
+                res = metric_results["swape"]
                 selection_reason = (
-                    "兩者誤差相近，依數據模式備援判定為季節型 (採用 sMASE)"
+                    "兩者誤差相近，依數據模式備援判定為季節型 (採用 sWAPE)"
                 )
             else:
-                selected_metric = "MASE"
-                best_overall_window = metric_results["mase"]["best_window"]
-                best_overall_score = mase_score
+                selected_metric = "WAPE"
+                res = metric_results["wape"]
                 selection_reason = (
-                    "兩者誤差相近，依數據模式備援判定為趨勢/成長型 (採用 MASE)"
+                    "兩者誤差相近，依數據模式備援判定為趨勢/成長型 (採用 WAPE)"
                 )
+
+    best_overall_window = res["best_window"]
 
     # 擬合最終模型
     recent_pnl = df_pnl.iloc[-best_overall_window:]
@@ -207,8 +235,10 @@ def 取季營收預測營利模型(
             "變動成本率": beta,
             "變動營利率": 1 - beta,
             "訓練季數": best_overall_window,
-            "誤差率": best_overall_score,
             "評估指標": selected_metric,
+            "OLS_WAPE": res["best_score"],
+            "Naive_WAPE": res["wape_naive"],
+            "WAPE較Naive改善量": res["wape_imp"],
             "選擇原因": selection_reason,
             "最近季度": df_pnl["財報季度"].max(),
         },
@@ -216,56 +246,3 @@ def 取季營收預測營利模型(
     )
 
     return model_series
-
-
-# =====================================================================
-# 2. 推理與預測函數：接受 pd.Series 作為模型輸入
-# =====================================================================
-def predict_future_ebit(model_series, df_future_monthly):
-    """傳入擬合好的模型 pd.Series 與未來月營收，預測未來各季營利。"""
-    import pandas as pd
-
-    # 相容 pd.Series 的 Key / 屬性讀取方式
-    alpha = model_series["固定成本"]
-    beta = model_series["變動成本率"]
-    last_hist_q = model_series["最近季度"]
-
-    df_future_m = df_future_monthly.copy()
-    df_future_m["YearMonth"] = pd.to_datetime(df_future_m["YearMonth"])
-    df_future_m["財報季度"] = df_future_m["YearMonth"].dt.to_period("Q")
-
-    rev_col = "營收" if "營收" in df_future_m.columns else "Revenue"
-
-    df_future_q = (
-        df_future_m.groupby("財報季度")[rev_col].sum().reset_index()
-    )
-
-    df_future_q = df_future_q[
-        df_future_q["財報季度"] > last_hist_q
-    ].reset_index(drop=True)
-
-    df_future_q["預估固定成本"] = alpha
-    df_future_q["預估變動成本"] = beta * df_future_q[rev_col]
-    df_future_q["預估營業總成本"] = (
-        df_future_q["預估固定成本"] + df_future_q["預估變動成本"]
-    )
-
-    df_future_q["預估營利"] = (
-        df_future_q[rev_col] - df_future_q["預估營業總成本"]
-    )
-    df_future_q["預估營業利益率_%"] = (
-        df_future_q["預估營利"] / df_future_q[rev_col]
-    ) * 100
-
-    result_df = df_future_q[
-        [
-            "財報季度",
-            rev_col,
-            "預估固定成本",
-            "預估變動成本",
-            "預估營利",
-            "預估營業利益率_%",
-        ]
-    ].rename(columns={rev_col: "預估營收"})
-
-    return result_df
