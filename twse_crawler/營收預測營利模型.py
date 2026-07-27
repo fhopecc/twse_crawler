@@ -77,10 +77,11 @@ def 取季營收預測營利模型(
     優化試驗次數=30,
     指定誤差衡量指標=None,
 ):
-    """分析歷史損益資料，同時評估 WAPE 與 sWAPE，優先採用誤差最小者；
-
-    計算 OLS 模型的 WAPE 及其相較於 Naive 模型的改善程度。
-    回傳包含模型與參數的 pd.Series 物件。
+    """
+    一、分析歷史損益資料，同時評估 WAPE 與 sWAPE，優先採用誤差最小者；
+    二、計算 OLS 模型的 WAPE 及其相較於 Naive 模型的改善程度。
+    三、參數項目：模型、固定成本、變動成本率、變動營利率、訓練季數、評估指標、
+                  OLS_WAPE、Naive_WAPE、WAPE較Naive改善量、選擇原因、最近季度
     """
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
@@ -246,38 +247,55 @@ def 取季營收預測營利模型(
 
     return model_series
 
-def 以營收預測次年度營利(預測至次年底各季營收, 歷史營利):
-    """使用歷史財報訓練 OLS 模型，並針對未來各季營收進行營利預測。
-    一、回傳：預估各季值
-    參數：
-    -----
-    預測至次年底各季營收 : pd.DataFrame
-        預測至次年底各季營收（需包含 '財報季度' 與 '營收' 欄位）
-    歷史營利 : pd.DataFrame
-        歷史季營利（需包含 '財報季度'、'營收'、'營利' 或 '營業成本'）
-
-    回傳：
-    -----
-    pd.DataFrame : 包含前年底至次年底各季營利（結合歷史實績與未來預測值）
+def 以營收預測次年度營利(預測至次年底各季營收: 'pandas.Series'
+                        ,歷史財報: 'pandas.DataFrame') ->  'pandas.Series':
+    """
+    一、預測項目：預估各季值
+    二、預測參數項目：最近歷史值期間
+    三、使用歷史財報訓練 OLS 模型，並針對未來各季營收進行營利預測。
     """
     from zhongwen.表 import 表示
     import pandas as pd
     # 1. 訓練模型並取得 OLS 參數
-    model_pkg = 取季營收預測營利模型(歷史營利)
+    model_pkg = 取季營收預測營利模型(歷史財報)
     alpha = model_pkg["固定成本"]
     beta = model_pkg["變動成本率"]
 
     # 2. 複製未來營收資料並計算預測營利
-    df_future = 預測至次年底各季營收.copy()
-    df_future = df_future[df_future.index > 歷史營利.index.max()]
+    df_future = 預測至次年底各季營收.copy().to_frame()
+    df_future = df_future[df_future.index > 歷史財報.index.max()]
     df_future = df_future.sort_index()
     # 表示(df_future, 顯示索引=True)
+
+
 
     # 預測營業成本 = Alpha + Beta * 未來營收
     df_future['預測營業成本']= alpha + beta * df_future.預估每季營收
     # 預測營利 = 未來營收 - 預測營業成本
     df_future['預測營利'] = df_future.預估每季營收 - df_future.預測營業成本
+
+    # # 計算：最近歷史值同比 (YoY)
+    # 最近季度 = model_pkg.最近季度
+    # 最近歷史值去年同季 = 最近季度 - 4
+    # y_歷史 = 歷史財報
+    # if 最近歷史值去年同季 in 歷史財報.index and 歷史財報.loc[最近歷史值去年同季] != 0:
+    #     # 適用於毛利率等百分比變動，若是成長率公式可用: (y_歷史.loc[最近季度] - y_歷史.loc[最近歷史值去年同季]) / y_歷史.loc[最近歷史值去年同季]
+    #     # 這裡採用標準增減幅（若本身為百分比，通常看絕對變動或相對變動，此處依常規百分比成長率計算）
+    #     最近歷史值同比 = (歷史財報.loc[最近季度] - y_歷史.loc[最近歷史值去年同季]) / abs(y_歷史.loc[最近歷史值去年同季])
+    # else:
+    #     最近歷史值同比 = np.nan
+
     model_pkg['預估各季值'] = df_future.預測營利
+    model_pkg['最後預估值時間'] = df_future.index.max()
+    model_pkg['預估值數量'] = df_future.shape[0]
+    model_pkg['歷史值數量'] = 歷史財報.shape[0]
+    model_pkg['rmse'] = model_pkg.OLS_WAPE
+    model_pkg['mape'] = model_pkg.OLS_WAPE
+    model_pkg['模型名稱'] = 'OLS'
+    # model_pkg['最近歷史值同比'] = 最近歷史值同比
+    model_pkg = model_pkg.rename({'最近季度':'最近歷史值時間'
+                                 ,'訓練季數':'回測資料數'
+                                 })
     return model_pkg
 
 # @通知執行時間
@@ -292,6 +310,7 @@ def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
     from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號, 取股票基本資料彙總表
     from twse_crawler.預估次年底 import 表達預估方法, 表達預估說明
     from twse_crawler.營收分析 import 取預測盈餘說明, 取歷月營收表
+    from twse_crawler.營收分析 import 預測次年底營收
     from zhongwen.快取 import 刪除指定名稱快取
     from twse_crawler.損益表分析 import 取損益表
     from zhongwen.表 import 表示, 數據不足
@@ -358,10 +377,10 @@ def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
 
     from twse_crawler.營收預測營利模型 import 以營收預測次年度營利
     from twse_crawler.財報分析 import 取財報彙總表
-    f = 以營收預測次年度營利(預測營收.to_frame(), 取財報彙總表(股票))
-    歷季損益表['營利'] = 歷季損益表.營利.fillna(f.預估各季值)
+    預估營利結果 = 以營收預測次年度營利(預測營收, 取財報彙總表(股票))
+    歷季損益表['營利'] = 歷季損益表.營利.fillna(預估營利結果.預估各季值)
     預測營利方法說明 = '新方法'
-    預測營利 = f.預估各季值
+    預測營利 = 預估營利結果.預估各季值
 
     # 預測業外損益
     from twse_crawler.預估次年底 import 預估至次年底每季值
@@ -384,21 +403,21 @@ def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
     年度每股盈餘 = 前年至次年各季數據.每股盈餘.resample('Y').sum()
 
     # 計算累積誤差率
-    # 累積誤差率 = (預估營收結果.mape + 預估營利結果.mape) * (1-業外影響程度)
-    累積誤差率 = (預估營收結果.mape) * (1-業外影響程度)
-    累積誤差率 += 預估業外損益結果.mape * 業外影響程度
+    累積誤差率 = (預估營收結果.mape + 預估營利結果.mape) * (1-業外影響程度)
+    # 累積誤差率 = (預估營收結果.mape) * (1-業外影響程度)
+    # 累積誤差率 += 預估業外損益結果.mape * 業外影響程度
 
     # 表達預估方法及預估結果
     from twse_crawler.預估次年底 import 移除重覆時間詞
     預估方法說明 = (f'以{預估營收結果.預估方法說明}'
-         # f'，輸入{表達預估方法(預估營利結果, "營利")}'
+         f'，輸入{表達預估方法(預估營利結果, "營利")}'
          f'，與{表達預估方法(預估業外損益結果, "業外損益")}'
          f'，加總之稅前損益'
          f'，扣除最高稅率20％之營所稅之損益'
          f'，再除以{取最簡約數(股數)}股之每股盈餘'
          )
     預估說明 = (f'{預估營收結果.預估說明}'
-                # f'，{表達預估說明(預估營利結果, "營利")}'
+                f'，{表達預估說明(預估營利結果, "營利")}'
                 f'，{表達預估說明(預估業外損益結果, "業外損益")}'
                 f'，{取預測盈餘說明(年度每股盈餘, 前年至次年各季數據)}，誤差{累積誤差率:,.0%}'
                 )
