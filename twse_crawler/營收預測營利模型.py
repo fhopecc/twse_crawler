@@ -246,3 +246,5 @@ def 取季營收預測營利模型(
     )
 
     return model_series
+
+
