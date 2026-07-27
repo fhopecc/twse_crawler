@@ -14,11 +14,13 @@ class Test(unittest.TestCase):
         from zhongwen.表 import 表示
         import matplotlib.pyplot as plt
         公司 = '中宇'
-        df = 取資產負債表(公司)
-        # 表示(df['合約負債－流動'], 顯示筆數=2000, 顯示索引=True) 
-        df['合約負債－流動'].plot()
-        plt.show()
+        r = 以營收預測次年每股盈餘(公司)
+        表示(r)
         self.assertFalse(True)
+        # df = 取資產負債表(公司)
+        # 表示(df['合約負債－流動'], 顯示筆數=2000, 顯示索引=True) 
+        # df['合約負債－流動'].plot()
+        plt.show()
         r = 預測次年底營收(公司)
         表示(r.預估每月值, 顯示筆數=2000, 顯示索引=True) 
         r.預估每月值.plot()

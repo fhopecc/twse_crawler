@@ -3,7 +3,6 @@ import optuna
 import pandas as pd
 import statsmodels.api as sm
 
-
 def calculate_wape(y_true, y_pred, y_train, seasonal_period=1):
     """計算 OLS 模型與 Naive 模型的 WAPE，並比較 OLS 改善了多少
 
@@ -246,5 +245,171 @@ def 取季營收預測營利模型(
     )
 
     return model_series
+
+def 以營收預測次年度營利(預測至次年底各季營收, 歷史營利):
+    """使用歷史財報訓練 OLS 模型，並針對未來各季營收進行營利預測。
+    一、回傳：預估各季值
+    參數：
+    -----
+    預測至次年底各季營收 : pd.DataFrame
+        預測至次年底各季營收（需包含 '財報季度' 與 '營收' 欄位）
+    歷史營利 : pd.DataFrame
+        歷史季營利（需包含 '財報季度'、'營收'、'營利' 或 '營業成本'）
+
+    回傳：
+    -----
+    pd.DataFrame : 包含前年底至次年底各季營利（結合歷史實績與未來預測值）
+    """
+    from zhongwen.表 import 表示
+    import pandas as pd
+    # 1. 訓練模型並取得 OLS 參數
+    model_pkg = 取季營收預測營利模型(歷史營利)
+    alpha = model_pkg["固定成本"]
+    beta = model_pkg["變動成本率"]
+
+    # 2. 複製未來營收資料並計算預測營利
+    df_future = 預測至次年底各季營收.copy()
+    df_future = df_future[df_future.index > 歷史營利.index.max()]
+    df_future = df_future.sort_index()
+    # 表示(df_future, 顯示索引=True)
+
+    # 預測營業成本 = Alpha + Beta * 未來營收
+    df_future['預測營業成本']= alpha + beta * df_future.預估每季營收
+    # 預測營利 = 未來營收 - 預測營業成本
+    df_future['預測營利'] = df_future.預估每季營收 - df_future.預測營業成本
+    model_pkg['預估各季值'] = df_future.預測營利
+    return model_pkg
+
+# @通知執行時間
+# @增加股票分析函數依資料時間更新快取功能(營收分析結果快取檔, ['營收月份', '財報季度'])
+def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
+    '''
+    一、以指定股票歷月營收表預測前年至次年每股盈餘。
+    二、預測結果：前年至次年每股盈餘、預估說明、預估方法說明。
+    三、增加預測上季每股盈餘及實際每股盈餘差異。
+    四、歷月營收表最近營收月份或歷季損益表最近財報季度大於快取對應值始更新。 
+    '''
+    from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號, 取股票基本資料彙總表
+    from twse_crawler.預估次年底 import 表達預估方法, 表達預估說明
+    from twse_crawler.營收分析 import 取預測盈餘說明, 取歷月營收表
+    from zhongwen.快取 import 刪除指定名稱快取
+    from twse_crawler.損益表分析 import 取損益表
+    from zhongwen.表 import 表示, 數據不足
+    from zhongwen.數 import 取最簡約數
+    from zhongwen.文 import 臚列
+    import pandas as pd
+    import zhongwen
+    import twse_crawler
+    公司代號 = 查股票代號(股票)
+    公司簡稱 = 查股票簡稱(股票)
+    歷季損益表 = 取損益表(公司代號)
+    最近財報季度 = 歷季損益表.財報季度.max()
+    歷季損益表['營收'] = 歷季損益表.營收.fillna(0)
+
+    # 取最近營收月份
+    df = 取歷月營收表(股票)
+    最近營收月份 = df.營收月份.max()
+
+    # 快取判斷
+    # try:
+    #     c = 營收分析快取[f'以營收預測次年每股盈餘預({股票})']
+    #     if not zhongwen.快取.停止快取 and (c.最近營收月份 >= 最近營收月份 and c.最近財報季度 >= 最近財報季度):
+    #         return c
+    # except KeyError: pass
+
+    try:
+        最近損益 = 歷季損益表.iloc[-1]
+    except IndexError as e:
+        raise 數據不足(f'{公司簡稱}歷季損益', 0, 1, '預測前年至次年每股盈餘')
+    except Exception as e:
+        errmsg = f'{type(e).__name__}({e})'
+        m = f"{公司代號}發生{errmsg}"
+        raise Exception(m)
+    try:
+        歷季損益表 = 歷季損益表.set_index(歷季損益表.財報日期.dt.to_period('Q'))
+    except AttributeError:
+        歷季損益表['財報日期'] = 歷季損益表.index
+
+    from twse_crawler.股利分析 import 無法預估盈餘
+    if 歷季損益表.營利.isna().all():
+        raise 無法預估盈餘(
+                f'{公司簡稱}歷季損益表僅無營利資料，'
+                 '無法以營收預測次年每股盈餘！')
+
+    # 計算業外影響程度 
+    業外影響程度 = abs(歷季損益表.業外損益.iloc[-1]) / abs(歷季損益表.稅前淨利.iloc[-1])
+
+    # 預測營收
+    預估營收結果 = 預測次年底營收(股票)
+    最近營收月份 = 預估營收結果.最近歷史值時間
+    預測營收 = 預估營收結果.預估每季總值.預估每季營收
+    future_index = 預測營收.index[預測營收.index > 歷季損益表.index.max()]
+    new_index = 歷季損益表.index.append(future_index)
+    歷季損益表 = 歷季損益表.reindex(new_index)
+    歷季損益表['營收'] = 歷季損益表.營收.fillna(預測營收)
+
+    # 以營收預測營利
+    # from twse_crawler.預估次年底 import 依外部季數據預估次年底數值
+    # 預估營利結果 = 依外部季數據預估次年底數值(歷季損益表.營利.dropna()
+    #                                          ,歷季損益表[['營收']]
+    #                                          ,預估目標='營利', 單位='元')
+    # 預測營利方法說明 = 表達預估方法(預估營利結果,'營利')
+    # 預測營利 = 預估營利結果.預估各季值
+
+    from twse_crawler.營收預測營利模型 import 以營收預測次年度營利
+    from twse_crawler.財報分析 import 取財報彙總表
+    f = 以營收預測次年度營利(預測營收.to_frame(), 取財報彙總表(股票))
+    歷季損益表['營利'] = 歷季損益表.營利.fillna(f.預估各季值)
+    預測營利方法說明 = '新方法'
+    預測營利 = f.預估各季值
+
+    # 預測業外損益
+    from twse_crawler.預估次年底 import 預估至次年底每季值
+    預估業外損益結果 = 預估至次年底每季值(歷季損益表.業外損益.dropna())
+    預測業外損益 = 預估業外損益結果.預估各季值
+    歷季損益表['業外損益'] = 歷季損益表.業外損益.fillna(預測業外損益)
+
+    # 預測稅前淨利
+    歷季損益表['稅前淨利'] = 歷季損益表.稅前淨利.fillna(預測營利+預測業外損益)
+
+    # 預測淨利
+    歷季損益表['淨利'] = 歷季損益表.淨利.fillna(歷季損益表.稅前淨利*0.8)
+
+    # 預測每股盈餘
+    q = 取股票基本資料彙總表(股票)
+    股數 = q.股數.iloc[-1]
+    歷季損益表['每股盈餘'] = 歷季損益表.每股盈餘.fillna(歷季損益表.淨利/股數)
+    from zhongwen.時 import 前年至次年各季末
+    前年至次年各季數據 = 歷季損益表.reindex(index=前年至次年各季末.to_period('Q'))
+    年度每股盈餘 = 前年至次年各季數據.每股盈餘.resample('Y').sum()
+
+    # 計算累積誤差率
+    # 累積誤差率 = (預估營收結果.mape + 預估營利結果.mape) * (1-業外影響程度)
+    累積誤差率 = (預估營收結果.mape) * (1-業外影響程度)
+    累積誤差率 += 預估業外損益結果.mape * 業外影響程度
+
+    # 表達預估方法及預估結果
+    from twse_crawler.預估次年底 import 移除重覆時間詞
+    預估方法說明 = (f'以{預估營收結果.預估方法說明}'
+         # f'，輸入{表達預估方法(預估營利結果, "營利")}'
+         f'，與{表達預估方法(預估業外損益結果, "業外損益")}'
+         f'，加總之稅前損益'
+         f'，扣除最高稅率20％之營所稅之損益'
+         f'，再除以{取最簡約數(股數)}股之每股盈餘'
+         )
+    預估說明 = (f'{預估營收結果.預估說明}'
+                # f'，{表達預估說明(預估營利結果, "營利")}'
+                f'，{表達預估說明(預估業外損益結果, "業外損益")}'
+                f'，{取預測盈餘說明(年度每股盈餘, 前年至次年各季數據)}，誤差{累積誤差率:,.0%}'
+                )
+    預測結果 = pd.Series({'前年至次年每股盈餘': pd.Series(年度每股盈餘)
+                         ,'預測說明':預估說明
+                         ,'預估說明':預估說明
+                         ,'預估方法說明':預估方法說明
+                         ,'最近財報季度':最近財報季度
+                         ,'最近營收月份':最近營收月份
+                         })
+    # 營收分析快取[f'以營收預測次年每股盈餘預({股票})'] = 預測結果
+    return 預測結果
 
 
