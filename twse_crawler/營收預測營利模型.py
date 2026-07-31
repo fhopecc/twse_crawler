@@ -13,8 +13,6 @@ import logging
 cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 logger = logging.getLogger(Path(__file__).stem)
 
-
-
 def 表達預估說明乙(預估結果, 預估目標='毛利率', 時間單位='季'):
     from zhongwen.數 import 取增減百分比
     from twse_crawler.預估次年底 import 表達期間
@@ -492,5 +490,3 @@ def 以營收預測次年每股盈餘(股票, 歷月營收表=None):
                          })
     # 營收分析快取[f'以營收預測次年每股盈餘預({股票})'] = 預測結果
     return 預測結果
-
-
