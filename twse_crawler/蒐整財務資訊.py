@@ -22,6 +22,7 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     四、每月15日前會先執行抓取上月營收彙總表更新月營收表資料。
     '''
     import twse_crawler.股票基本資料分析
+    from tabulate import tabulate
     from twse_crawler.行情分析 import 抓取近一週上市櫃收盤行情
     from zhongwen.時 import 自起日按日列舉迄今, 本季
     from zhongwen.表 import 表示
@@ -38,7 +39,7 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     try:
         for 歸屬日期 in 自起日按日列舉迄今(最近歸屬日期 - pd.Timedelta(days=1)):
             爬取重大訊息(歸屬日期)
-    except requests.exceptions.ChunkedEncodingError as e:
+    except Exception as e:
         logger.error(f"爬取重大訊息發生{e}！")
 
     # 更新落後2季以上之財報數據
@@ -55,7 +56,7 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     for lag_quarter in range(2, 5):
         df_lag = df.query('距今季數==@lag_quarter')
         if not df_lag.empty:
-            表示(df_lag, 顯示索引=True)
+            print(tabulate(df_lag))
             from zhongwen.date import 季別
             from zhongwen.時 import 取民國季度
             from twse_crawler.財報爬蟲 import 下載季報包
@@ -87,9 +88,12 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     for lag_mon in range(2, 5):
         df_lag = df.query('距今月數==@lag_mon')
         if not df_lag.empty:
-            表示(df_lag, 顯示索引=True)
+            print(tabulate(df_lag))
             if not 僅顯示落後資訊不予更新:
-                抓取月營收彙總表(本月-lag_mon+1)
+                try:
+                    抓取月營收彙總表(本月-lag_mon+1)
+                except Exception as e:
+                    logger.error(f'抓取月營收彙總表({本月-lag_mon+1})發生：{e}')
 
     # 更新月自結損益
     logger.info('更新落後2月以上之自結損益')
@@ -104,7 +108,7 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     for lag_mon in range(2, 5):
         df_lag = df.query('距今月數==@lag_mon')
         if not df_lag.empty:
-            表示(df_lag, 顯示索引=True)
+            print(tabulate(df_lag))
             if not 僅顯示落後資訊不予更新:
                 抓取月自結損益彙總表(本月-lag_mon+1)
 

@@ -482,6 +482,8 @@ def 預測次年底營收(股票):
     三、歷月營收表最近營收月份大於快取最近歷史值時間始更新。
     """
     from twse_crawler.預估次年底 import 預估至次年底每月值
+    from twse_crawler.預估至次年底每月值 import 預估至次年底每月值丙式
+    from twse_crawler.預估至次年底每季值 import 表達預估方法丙, 表達預估說明丙
     from twse_crawler.預估次年底 import 表達預估方法, 表達預估說明
     from zhongwen.表 import 表示
     from zhongwen.快取 import 停止快取
@@ -492,9 +494,9 @@ def 預測次年底營收(股票):
             return c
     except KeyError: pass
     h = h.營收
-    p = 預估至次年底每月值(h)
-    p['預估方法說明'] = 表達預估方法(p, '營收', 時間單位='月')
-    p['預估說明'] = 表達預估說明(p, '營收', 時間單位='月')
+    p = 預估至次年底每月值丙式(h)
+    p['預估方法說明'] = 表達預估方法丙(p, '營收', 時間單位='月')
+    p['預估說明'] = 表達預估說明丙(p, '營收', 時間單位='月')
     營收分析快取[f'預測次年底營收({股票})'] = p
     return p
 
@@ -666,7 +668,8 @@ def 以營收預測稅前淨利及次年每股盈餘(股票, 歷月營收表=Non
 
     # 預測營收
     預估營收結果 = 預測次年底營收(股票)
-    預測營收 = 預估營收結果.預估每季總值.預估每季營收
+    預測營收 = 預估營收結果.預估每季總值
+    預測營收.columns = ['預估每季營收']
     future_index = 預測營收.index[預測營收.index > 歷季損益表.index.max()]
     new_index = 歷季損益表.index.append(future_index)
     歷季損益表 = 歷季損益表.reindex(new_index)

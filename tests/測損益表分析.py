@@ -18,7 +18,8 @@ class Test(unittest.TestCase):
         from zhongwen.表 import 表示
         import twse_crawler
         # twse_crawler.損益表分析.cache.clear()
-        r = 以淨利預測次年每股盈餘('數字')
+        # r = 以淨利預測次年每股盈餘('數字')
+        r = 以淨利預測次年每股盈餘('一零四')
         表示(r)
         self.assertFalse(True)
         r = 檢測營收及毛利率關係('泰銘')
