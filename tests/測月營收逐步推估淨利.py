@@ -10,7 +10,7 @@ class Test(unittest.TestCase):
         from twse_crawler.月營收逐步推估淨利 import 以月營收逐步推估淨利
         from twse_crawler.月營收逐步推估淨利 import 計算誤差率
         from zhongwen.表 import 表示
-        股票 = '長榮鋼'
+        股票 = '數字'
         r = 以月營收逐步推估淨利(股票)
         表示(r, 顯示索引=True)
         self.assertFalse(True)

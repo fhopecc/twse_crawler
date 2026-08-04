@@ -9,7 +9,9 @@ class Test(unittest.TestCase):
         from twse_crawler.預估次年底淨利 import 預估次年底淨利
         from twse_crawler.財報分析 import 取財報彙總表
         from zhongwen.表 import 表示
-        股票 = '一零四'
+        import zhongwen.快取
+        zhongwen.快取.停止快取 = True
+        股票 = '是方'
         r = 預估次年底淨利(股票)
         表示(r)
         self.assertFalse(True)
