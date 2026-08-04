@@ -8,7 +8,7 @@ class Test(unittest.TestCase):
         from twse_crawler.預估次年底淨利 import 以淨利預測次年每股盈餘
         from twse_crawler.損益表分析 import 取損益表
         from zhongwen.表 import 表示
-        股票 = '數字'
+        股票 = '富林-KY'
         import zhongwen.快取
         zhongwen.快取.停止快取=True
         r = 預估次年底淨利(股票)
