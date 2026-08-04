@@ -166,4 +166,16 @@ def 增加股票分析函數依資料時間更新快取功能(快取檔: "diskca
     return 取可依資料時間更新快取之股票分析函數
 
 if __name__ == '__main__':
-    蒐整財務資訊(僅顯示落後資訊不予更新=True) 
+    # 蒐整財務資訊(僅顯示落後資訊不予更新=True) 
+    from twse_crawler.行情分析 import 取最近上市櫃收盤行情
+    from twse_crawler.行情分析 import 抓取近一週上市櫃收盤行情
+    import twse_crawler.行情分析
+    from zhongwen.表 import 表示
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger('googleclient').setLevel(logging.CRITICAL)
+    logging.getLogger('matplotlib').setLevel(logging.CRITICAL)
+    logging.getLogger('faker').setLevel(logging.CRITICAL)
+    # twse_crawler.行情分析.cache.clear()
+    df = 取最近上市櫃收盤行情()
+    表示(df)

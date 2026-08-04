@@ -16,15 +16,17 @@ def 抓取近一週上市櫃收盤行情():
     from zhongwen.時 import 一日, 一週前, 今日, 是工作日, 最近工作日, 取正式民國日期
     from twse_crawler.證交所爬蟲 import 抓取上市每日收盤行情
     from twse_crawler.櫃買中心爬蟲 import 抓取上櫃股票行情
-    from zhongwen.表 import 顯示
+    from zhongwen.表 import 表示
     import pandas as pd
     ds = 取最近上市櫃收盤行情().交易日期.unique()
     d = 最近工作日
     while d >= 一週前:
         if d not in ds and 是工作日(d):
+            df = 抓取上市每日收盤行情(d)
+            df = 抓取上櫃股票行情(d)
             logger.info(f'抓取{取正式民國日期(d)}收盤行情')
-            抓取上市每日收盤行情(d)
-            抓取上櫃股票行情(d)
+        else:
+            logger.info(f'已抓取{取正式民國日期(d)}收盤行情')
         d -= 一日
 
 @functools.cache
