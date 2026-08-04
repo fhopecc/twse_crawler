@@ -9,12 +9,11 @@ class Test(unittest.TestCase):
         from twse_crawler.財報分析 import 取財報彙總表
         from twse_crawler.營收分析 import 取歷月營收表
         from zhongwen.表 import 表示
-        股票 = '一零四'
+        股票 = '是方'
         h = 取歷月營收表(股票)
         r = 預估至次年底每月值丙式(h.營收)
         # r = 取預估至次年底每季值模型(h.淨利)
         print(表達預估方法丙(r, 預估目標='營收', 時間單位='月'))
-        print(表達預估說明丙(r, 預估目標='營收', 時間單位='月'))
         表示(r)
         self.assertFalse(True)
 

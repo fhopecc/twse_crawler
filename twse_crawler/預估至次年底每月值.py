@@ -3,11 +3,12 @@ def 取預估至次年底每月值模型(
 ) -> "pd.Series":
     """
     一、主要欄位：模型擬合、模型名稱、採用指標、誤差率、較無腦模型改善率、
-                  最佳訓練資料數、回測資料數。
-    二、輔助欄位：指標說明、wmpe、swmpe、naive_wmpe、naive_swmpe、
-                 snaive_wmpe、snaive_swmpe、_y_原始、_y_最終訓練。
-    三、最佳模型：係回測 12 個月之評估指標最小 Theta 之訓練資料數及是否去季節情形。
-    四、搜尋次數：固定執行 30 次 Optuna 試驗，兼顧搜尋品質與速度。
+                 最佳訓練資料數、回測資料數。
+    二、輔助欄位：指標說明、wmape、naive_wmape、snaive_wmape、_y_原始、_y_最終訓練。
+    三、最佳模型：係回測 12 個月之 WMAPE 最小 Theta 之訓練資料數及是否去季節情形。
+                 若最佳 Theta 表現劣於無腦模型 (改善率 < 0)，則自動切換退回採用最佳無腦模型。
+    四、模型名稱：以去年同期值預測、以上期值預測
+    五、搜尋次數：固定執行 30 次 Optuna 試驗，兼顧搜尋品質與速度。
     """
     # 1. 於函式內部進行套件導入
     import warnings
@@ -22,6 +23,7 @@ def 取預估至次年底每月值模型(
     # 內部固定參數
     回測月數 = 12
     N_TRIALS = 30
+    勝出指標 = 'wmape'
 
     # 2. 數據型態檢查、防禦與自動對齊 (相容月度標記)
     是月度索引 = isinstance(歷月數值.index, pd.PeriodIndex) and 歷月數值.index.freqstr.startswith('M')
@@ -36,20 +38,7 @@ def 取預估至次年底每月值模型(
     y_原始 = 歷月數值.astype(float)
     y_原始.index = y_原始.index.asfreq('M')
 
-    # 3. 定義 WMPE 與 Seasonal WMPE (SWMPE) 計算邏輯
-    def calc_wmpe(y_true, y_pred):
-        sum_abs_true = np.sum(np.abs(y_true))
-        if sum_abs_true == 0:
-            return float('inf')
-        return np.sum(np.abs(y_true - y_pred)) / sum_abs_true
-
-    def calc_swmpe(y_true, y_pred, y_seasonal_base):
-        if len(y_seasonal_base) < len(y_true):
-            return calc_wmpe(y_true, y_pred)
-        seasonal_diff_sum = np.sum(np.abs(y_true - y_seasonal_base))
-        if seasonal_diff_sum == 0:
-            return float('inf')
-        return np.sum(np.abs(y_true - y_pred)) / seasonal_diff_sum
+    from twse_crawler.無腦預測至次年底每季值 import calc_wmape
 
     # 4. 定義 Optuna 最佳化目標函數
     def objective(trial):
@@ -60,9 +49,7 @@ def 取預估至次年底每月值模型(
         else:
             window_size = trial.suggest_int('window_size', min_window, max_window)
 
-        # 採用 suggest_categorical 保證跨 Optuna 版本的套件相容性
         deseasonalize_choice = trial.suggest_categorical('deseasonalize', [True, False])
-        metric_choice = trial.suggest_categorical('metric', ['wmpe', 'swmpe'])
 
         # 切分訓練集與驗證集
         訓練起點 = max(0, len(y_原始) - 回測月數 - window_size)
@@ -79,16 +66,11 @@ def 取預估至次年底每月值模型(
                 return float('inf')
         except:
             return float('inf')
-
-        snaive_base = y_原始.iloc[-回測月數-12:-12].values if len(y_原始) >= 回測月數 + 12 else y_真實驗證
         
-        當前_wmpe = calc_wmpe(y_真實驗證, 預測陣列)
-        當前_swmpe = calc_swmpe(y_真實驗證, 預測陣列, snaive_base)
+        當前_wmape = calc_wmape(y_真實驗證, 預測陣列)
+        trial.set_user_attr("wmape", float(當前_wmape))
         
-        trial.set_user_attr("wmpe", float(當前_wmpe))
-        trial.set_user_attr("swmpe", float(當前_swmpe))
-        
-        return 當前_wmpe if metric_choice == 'wmpe' else 當前_swmpe
+        return 當前_wmape
 
     # 5. 執行 Optuna 搜尋
     研究工廠 = optuna.create_study(direction='minimize')
@@ -97,50 +79,81 @@ def 取預估至次年底每月值模型(
     最佳參數 = 研究工廠.best_params
     最佳訓練資料數 = 最佳參數.get('window_size', len(y_原始) - 回測月數)
     勝出季節性 = 最佳參數.get('deseasonalize', True)
-    勝出指標 = 最佳參數.get('metric', 'swmpe')
 
     最佳實驗 = 研究工廠.best_trial
-    best_wmpe = 最佳實驗.user_attrs.get("wmpe", np.nan)
-    best_swmpe = 最佳實驗.user_attrs.get("swmpe", np.nan)
+    best_wmape = 最佳實驗.user_attrs.get("wmape", np.nan)
 
-    # 依勝出指標決定最終對外輸出的誤差率
-    誤差率 = best_wmpe if 勝出指標 == 'wmpe' else best_swmpe
-
-    # 6. 計算 Naïve 與 Seasonal Naïve 基準
+    # 6. 計算 Naïve 與 Seasonal Naïve 基準的 WMAPE
     真實值 = y_原始.iloc[-回測月數:].values
-    snaive_base = y_原始.iloc[-回測月數-12:-12].values if len(y_原始) >= 回測月數 + 12 else 真實值
     
+    # Naïve 基準 (拿回測點前最後一期平移)
     naive_pred = np.full(回測月數, y_原始.iloc[-回測月數-1])
-    naive_wmpe = calc_wmpe(真實值, naive_pred)
-    naive_swmpe = calc_swmpe(真實值, naive_pred, snaive_base)
+    naive_wmape = calc_wmape(真實值, naive_pred)
 
+    # Seasonal Naïve 基準 (拿前一年同期值)
+    snaive_base = y_原始.iloc[-回測月數-12:-12].values if len(y_原始) >= 回測月數 + 12 else 真實值
     snaive_pred = snaive_base
-    snaive_wmpe = calc_wmpe(真實值, snaive_pred)
-    snaive_swmpe = calc_swmpe(真實值, snaive_pred, snaive_base)
+    snaive_wmape = calc_wmape(真實值, snaive_pred)
 
-    # 較無腦模型改善率計算 (最佳模型誤差 vs 最強無腦基準誤差)
-    模型最佳誤差 = min(best_wmpe, best_swmpe)
-    無腦基線最優誤差 = min(naive_wmpe, naive_swmpe, snaive_wmpe, snaive_swmpe)
-    
+    # 7. 模型評比與退回無腦模型判定
+    模型最佳誤差 = best_wmape
+
+    # 選出最優無腦基準
+    if snaive_wmape < naive_wmape:
+        無腦基線最優誤差 = snaive_wmape
+        最佳無腦類型 = '以去年同期值預測'
+    else:
+        無腦基線最優誤差 = naive_wmape
+        最佳無腦類型 = '以上期值預測'
+
+    # 計算改善率
     if 無腦基線最優誤差 > 0 and not np.isinf(無腦基線最優誤差):
         較無腦模型改善率 = (無腦基線最優誤差 - 模型最佳誤差) / 無腦基線最優誤差
     else:
         較無腦模型改善率 = np.nan
 
-    # 7. 擬合最終勝出的 Theta 模型
-    最終訓練起點 = max(0, len(y_原始) - 最佳訓練資料數)
-    y_最終訓練 = y_原始.iloc[最終訓練起點:]
-    
-    tm = ThetaModel(y_最終訓練, period=12, deseasonalize=勝出季節性)
-    最終模型擬合 = tm.fit()
-    模型顯示名稱 = f"最小 {勝出指標.upper()} 之{'季節性' if 勝出季節性 else ''} Theta"
+    # 8. 構建最終模型（若 Theta 表現比無腦模型差，即改善率 < 0 或改善率為 NaN，則退回無腦模型）
+    採用無腦模型 = (pd.isna(較無腦模型改善率) or 較無腦模型改善率 < 0)
+
+    if 採用無腦模型:
+        最終訓練起點 = 0
+        y_最終訓練 = y_原始
+        誤差率 = 無腦基線最優誤差
+        模型顯示名稱 = 最佳無腦類型
+        
+        # 封裝與 Statsmodels 介面相容的 Dummy 擬合物件
+        class NaiveModelFit:
+            def __init__(self, mode, y_data):
+                self.mode = mode
+                self.y_data = y_data
+                self.params = pd.Series({'b0': 0.0, 'alpha': 0.0})
+
+            def forecast(self, steps):
+                if self.mode == '以上期值預測':
+                    last_val = self.y_data.iloc[-1]
+                    return pd.Series(np.full(steps, last_val))
+                else:  # 以去年同期值預測
+                    last_12 = self.y_data.iloc[-12:].values
+                    reps = int(np.ceil(steps / 12))
+                    forecast_vals = np.tile(last_12, reps)[:steps]
+                    return pd.Series(forecast_vals)
+
+        最終模型擬合 = NaiveModelFit(最佳無腦類型, y_原始)
+
+    else:
+        最終訓練起點 = max(0, len(y_原始) - 最佳訓練資料數)
+        y_最終訓練 = y_原始.iloc[最終訓練起點:]
+        誤差率 = 模型最佳誤差
+        模型顯示名稱 = f"Theta"
+
+        tm = ThetaModel(y_最終訓練, period=12, deseasonalize=勝出季節性)
+        最終模型擬合 = tm.fit()
 
     指標說明 = (
-        f"由 Optuna 多步盲測（固定 12 個月回測），訓練資料數為 {最佳訓練資料數} 個月，"
-        f"採用 [{模型顯示名稱}]，評估指標為 [{勝出指標.upper()}]"
+        f"由 Optuna 多步盲測（固定 12 個月回測），採用 [{模型顯示名稱}]，"
+        f"評估指標為 [WMAPE]，最佳訓練資料數為 {最佳訓練資料數} 個月"
     )
 
-    # 隱含保留計算所需的隱藏資訊供呼叫者使用
     _y_原始 = y_原始
     _y_最終訓練 = y_最終訓練
 
@@ -150,32 +163,27 @@ def 取預估至次年底每月值模型(
         "採用指標": 勝出指標,
         "指標說明": 指標說明,
         "誤差率": 誤差率,
-        "wmpe": best_wmpe,
-        "swmpe": best_swmpe,
-        "naive_wmpe": naive_wmpe,
-        "naive_swmpe": naive_swmpe,
-        "snaive_wmpe": snaive_wmpe,
-        "snaive_swmpe": snaive_swmpe,
+        "wmape": best_wmape,
+        "naive_wmape": naive_wmape,
+        "snaive_wmape": snaive_wmape,
         "較無腦模型改善率": 較無腦模型改善率,
         "最佳訓練資料數": 最佳訓練資料數,
         "回測資料數": 回測月數,
-        # 私有傳遞（不對外露出於 Series 的 Key 外部感知，供下游函式取用）
         "_y_原始": _y_原始,
         "_y_最終訓練": _y_最終訓練
     })
 
 
 def 預估至次年底每月值丙式(
-    歷月數值: "pd.Series",
-    單位 = '元'
+    歷月數值: "pd.Series"
 ) -> "pd.Series":
     """
     一、預測結果：預估各月值、最近歷史值同比、首期預估值同比、誤差率、較無腦模型改善率、
-                  趨勢、近期影響權重。
+                 趨勢、近期影響權重。
     二、預測季結果：預估每季總值。
-    二、預測方法：模型名稱、採用指標、指標說明、歷史值數量、預估值數量、回測資料數、
+    三、預測方法：模型名稱、採用指標、指標說明、歷史值數量、預估值數量、回測資料數、
                  最佳訓練資料數、模型參數、最近歷史值時間、最後預估值時間。
-    三、外推防禦：加入空值與發散值補強，適合業外損益與淨利等高波動財務科目。
+    四、外推防禦：加入空值與發散值補強，適合業外損益與淨利等高波動財務科目。
     """
     # 1. 於函式內部進行套件導入
     import numpy as np
@@ -202,7 +210,7 @@ def 預估至次年底每月值丙式(
     預估月_陣列 = 最終模型擬合.forecast(外推步數)
     
     # 財務保守原則：防禦未來預測值發散 (NaN / Inf)，採最後 12 個月平均值安全填充
-    if 預估月_陣列.isna().any() or np.isinf(預估月_陣列.values).any():
+    if pd.isna(預估月_陣列).any() or np.isinf(預估月_陣列.values).any():
         安全填補值 = y_最終訓練.tail(12).mean()
         安全填補值 = 安全填補值 if pd.notna(安全填補值) else 0.0
         預估月_陣列 = 預估月_陣列.fillna(安全填補值).replace([np.inf, -np.inf], 安全填補值)
@@ -212,9 +220,14 @@ def 預估至次年底每月值丙式(
     # 5. 整合與計算各項延伸統計指標
     預估各月全序列 = pd.concat([y_原始, 預估月_序列])
     
+    # 安全獲取模型參數 (若退回至無腦模型，b0 與 alpha 皆為 0.0 或 np.nan)
+    params = getattr(最終模型擬合, 'params', None)
+    b0 = params.b0 if params is not None and hasattr(params, 'b0') else np.nan
+    alpha = params.alpha if params is not None and hasattr(params, 'alpha') else np.nan
+
     模型參數字典 = pd.Series({
-        "b0": 最終模型擬合.params.b0,
-        "alpha": 最終模型擬合.params.alpha
+        "b0": b0,
+        "alpha": alpha
     })
     
     # 同比為與上年同月相比 (相差 12 個月)
@@ -235,7 +248,6 @@ def 預估至次年底每月值丙式(
         "預估各月值": 預估各月全序列,
         "預估每季總值": 預估每季總值,
         "模型名稱": 模型結果["模型名稱"],
-        "採用指標": 模型結果["採用指標"],
         "指標說明": 模型結果["指標說明"],
         "誤差率": 模型結果["誤差率"],
         "較無腦模型改善率": 模型結果["較無腦模型改善率"],

@@ -22,9 +22,10 @@ def 預估次年底淨利(股票, 重新評估模型=False):
     from twse_crawler.預估至次年底每季值 import 預估至次年底每季值丙式
     from twse_crawler.預估至次年底每季值 import 表達預估說明丙
     from twse_crawler.月營收逐步推估淨利 import 以月營收逐步推估淨利
+    import zhongwen.快取
     h = 取財報彙總表(股票)
     try:
-        if not 重新評估模型:
+        if not zhongwen.快取.停止快取:
             # raise KeyError('重評')
             r = 各股預估模型誤差率明細檔[股票]
             min_row = r.loc[r.誤差率.idxmin()]
