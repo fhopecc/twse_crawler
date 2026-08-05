@@ -8,7 +8,6 @@ class Test(unittest.TestCase):
         from twse_crawler.營收分析 import 預測次年底營收, 取歷月營收表
         from twse_crawler.月營收逐步推估淨利 import 自月營收逐步推估淨利
         from twse_crawler.月營收逐步推估淨利 import 以月營收逐步推估淨利
-        from twse_crawler.月營收逐步推估淨利 import 計算誤差率
         from zhongwen.表 import 表示
         股票 = '數字'
         r = 以月營收逐步推估淨利(股票)
