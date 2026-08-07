@@ -9,7 +9,7 @@ class Test(unittest.TestCase):
         from twse_crawler.財報分析 import 取財報彙總表
         from twse_crawler.營收分析 import 取歷月營收表
         from zhongwen.表 import 表示
-        股票 = '是方'
+        股票 = '中再保'
         h = 取歷月營收表(股票)
         r = 預估至次年底每月值丙式(h.營收)
         # r = 取預估至次年底每季值模型(h.淨利)

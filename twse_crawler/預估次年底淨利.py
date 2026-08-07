@@ -10,10 +10,12 @@ from pathlib import Path
 @通知執行時間
 def 預估次年底淨利(股票, 重新評估模型=False):
     '''
-    整體模型修正：
-    刪除 swmpe，只用 wmpe 衡量，並將 wmpe 正名為 wmape，另
-    y_原始 改為 y、y_訓練 改為 y_train、
-    y_真實驗證 改為 y_validation、y_最終訓練 改為 y_best_train。
+    一、輸出：前年至次年每股盈餘、誤差率、預估說明、預估方法說明、
+              最近財報季度、最近營收月份、預測說明
+    二、誤差率係 WMAPE。
+    三、整體模型修正：刪除 swmpe，只用 wmpe 衡量，並將 wmpe 正名為 wmape，
+        另y_原始改為 y、y_訓練 改為 y_train、y_真實驗證改為 y_validation、
+        y_最終訓練 改為 y_best_train。
     '''
     import pandas as pd
     from twse_crawler.財報分析 import 取財報彙總表
@@ -26,37 +28,30 @@ def 預估次年底淨利(股票, 重新評估模型=False):
     h = 取財報彙總表(股票)
     try:
         if not zhongwen.快取.停止快取:
-            # raise KeyError('重評')
             r = 各股預估模型誤差率明細檔[股票]
             min_row = r.loc[r.誤差率.idxmin()]
             best_model = min_row.模型
-            # print(best_model)
             if '期值' in best_model:
-                # p = 無腦預估至次年底每季值(h.淨利)
                 p = 預估至次年底每季值丙式(h.淨利)
                 p['各項預估說明'] = f'【預估淨利】{表達預估說明丙(p)}'
             elif 'Theta' in best_model:
                 p = 預估至次年底每季值丙式(h.淨利)
                 p['各項預估說明'] = f'【預估淨利】{表達預估說明丙(p)}'
-            elif '月營收逐步' in best_model:
+            elif '逐步' in best_model:
                 p = 以月營收逐步推估淨利(股票)
                 p['各項預估說明'] = f'{p.各項預估說明}【預估淨利】{表達預估說明丙(p)}'
-            # print(r)
             p['模型評估結果'] = r
             return p
     except KeyError: pass
     try:
-        # 無腦預估結果 = 無腦預估至次年底每季值(h.淨利)
         西塔預估結果 = 預估至次年底每季值丙式(h.淨利)
         月營收逐步推估淨利結果 = 以月營收逐步推估淨利(股票)
         r = pd.DataFrame([
-            {'模型': 西塔預估結果.模型名稱, '誤差率':西塔預估結果.誤差率}
-            # ,{'模型': 無腦預估結果.模型名稱, '誤差率':無腦預估結果.誤差率}
+             {'模型': 西塔預估結果.模型名稱, '誤差率':西塔預估結果.誤差率}
             ,{'模型': 月營收逐步推估淨利結果.模型名稱, '誤差率':月營收逐步推估淨利結果.誤差率}
             ])
         各股預估模型誤差率明細檔[股票] = r
         min_row = r.loc[r.誤差率.idxmin()]
-        # for m in [無腦預估結果, 西塔預估結果, 月營收逐步推估淨利結果]:
         for m in [西塔預估結果, 月營收逐步推估淨利結果]:
             if m.模型名稱 == min_row.模型:
                 m['模型評估結果'] = r
@@ -125,6 +120,6 @@ def 以淨利預測次年每股盈餘(股票):
                          ,'預估方法說明':預估方法說明
                          ,'最近財報季度':最近財報季度
                          ,'最近營收月份':營收.index.max()
+                         ,'誤差率':預估淨利結果.誤差率
                          })
-    # 營收分析快取[f'以營收預測次年每股盈餘預({股票})'] = 預測結果
     return 預測結果
