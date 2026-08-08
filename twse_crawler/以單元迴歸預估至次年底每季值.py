@@ -88,7 +88,7 @@ def 取以單元迴歸預估至次年底每季值模型(
                 return float('inf')
         except:
             return float('inf')
-
+            
         當前_wmape = calc_wmape(y_validation, 預測陣列)
         trial.set_user_attr("wmape", float(當前_wmape))
 
@@ -102,56 +102,40 @@ def 取以單元迴歸預估至次年底每季值模型(
     最佳訓練資料數 = 最佳參數.get('window_size', len(y) - 回測季數)
 
     最佳實驗 = 研究工廠.best_trial
-    best_wmape = 最佳實驗.user_attrs.get("wmape", np.nan)
+    best_wmape = 最佳實驗.user_attrs.get("wmape", np.inf)
 
-    # 對外輸出的誤差率
-    誤差率 = best_wmape
+    # 6. 與不以外部變數 X 預測，僅以 y 時序預測比較，取出較佳者
+    from twse_crawler.預估至次年底每季值 import 取預估至次年底每季值模型
+    only_y_forecast = 取預估至次年底每季值模型(y)
+    
+    # 提取 y 時序預測的誤差率 (安全存取)
+    y_wmape = getattr(only_y_forecast, 'wmape', getattr(only_y_forecast, '誤差率', np.inf))
 
-    # 6. 計算 Naïve 與 Seasonal Naïve 基準
-    真實值 = y.iloc[-回測季數:].values
-    snaive_base = y.iloc[-回測季數-4:-4].values if len(y) >= 回測季數 + 4 else 真實值
-
-    naive_pred = np.full(回測季數, y.iloc[-回測季數-1])
-    naive_wmape = calc_wmape(真實值, naive_pred)
-
-    snaive_pred = snaive_base
-    snaive_wmape = calc_wmape(真實值, snaive_pred)
-
-    # 較無腦模型改善率計算
-    無腦基線最優誤差 = min(naive_wmape, snaive_wmape)
-
-    if 無腦基線最優誤差 > 0 and not np.isinf(無腦基線最優誤差):
-        較無腦模型改善率 = (無腦基線最優誤差 - best_wmape) / 無腦基線最優誤差
-    else:
-        較無腦模型改善率 = np.nan
-
-    # 7. 擬合最終勝出的 OLS 迴歸模型
-    最終訓練起點 = max(0, len(y) - 最佳訓練資料數)
-    y_best_train = y.iloc[最終訓練起點:]
-    X_best_train = X_原始.iloc[最終訓練起點:]
-
-    X_best_train_const = sm.add_constant(X_best_train, has_constant='add')
-    ols_final = sm.OLS(y_best_train, X_best_train_const)
-    最終模型擬合 = ols_final.fit()
-
-    模型顯示名稱 = "OLS"
-
-    指標說明 = (
-        f"由 Optuna 多步盲測（固定 4 季回測），訓練資料數為 {最佳訓練資料數} 季，"
-        f"採用 [{模型顯示名稱}]，評估指標為 [WMAPE]"
-    )
+    if y_wmape < best_wmape: # y 時序預測勝出
+        誤差率 = y_wmape
+        最終模型擬合 = getattr(only_y_forecast, '模型擬合', only_y_forecast)
+        模型顯示名稱 = getattr(only_y_forecast, '模型名稱', '純y時序模型')
+        y_best_train = y
+        X_best_train = None
+        is_ols = False
+    else: # OLS 迴歸模型勝出
+        誤差率 = best_wmape
+        最終訓練起點 = max(0, len(y) - 最佳訓練資料數)
+        y_best_train = y.iloc[最終訓練起點:]
+        X_best_train = X_原始.iloc[最終訓練起點:]
+        X_best_train_const = sm.add_constant(X_best_train, has_constant='add')
+        ols_final = sm.OLS(y_best_train, X_best_train_const)
+        最終模型擬合 = ols_final.fit()
+        模型顯示名稱 = "OLS"
+        is_ols = True
 
     return pd.Series({
         "模型擬合": 最終模型擬合,
         "模型名稱": 模型顯示名稱,
-        "指標說明": 指標說明,
         "誤差率": 誤差率,
-        "wmape": best_wmape,
-        "naive_wmape": naive_wmape,
-        "snaive_wmape": snaive_wmape,
-        "較無腦模型改善率": 較無腦模型改善率,
         "最佳訓練資料數": 最佳訓練資料數,
         "回測資料數": 回測季數,
+        "is_ols": is_ols,
         "_y_原始": y,
         "_y_最終訓練": y_best_train,
         "_X_原始": X_原始,
@@ -176,7 +160,6 @@ def 以單元迴歸預估至次年底每季值(
     import numpy as np
     import pandas as pd
     import statsmodels.api as sm
-    from zhongwen.時 import 今年數
 
     # 2. 調用專屬 OLS 迴歸模型尋優函式
     模型結果 = 取以單元迴歸預估至次年底每季值模型(歷季自變數, 歷季應變數)
@@ -184,6 +167,7 @@ def 以單元迴歸預估至次年底每季值(
     y = 模型結果["_y_原始"]
     y_best_train = 模型結果["_y_最終訓練"]
     回測季數 = 模型結果["回測資料數"]
+    is_ols = 模型結果["is_ols"]
 
     # 3. 處理未來自變數結構與索引
     if isinstance(未來自變數, pd.Series):
@@ -203,13 +187,46 @@ def 以單元迴歸預估至次年底每季值(
     except Exception as e:
         raise ValueError(f"未來自變數索引無法轉換為季度型態，錯誤原因: {e}")
 
-    外推步數 = len(X_未來)
+    # 自動識別真正的「未來」季度 (大於歷史 y 的最新一季)
+    未來季度索引 = X_未來.index[X_未來.index > y.index[-1]]
+    
+    # 備援防禦：若未來自變數未包含未來季度，則自動向外延伸 len(X_未來) 季
+    if len(未來季度索引) == 0:
+        未來季度索引 = pd.period_range(start=y.index[-1] + 1, periods=len(X_未來), freq='Q')
+        X_未來_有效 = X_未來.copy()
+        X_未來_有效.index = 未來季度索引
+    else:
+        X_未來_有效 = X_未來.loc[未來季度索引]
 
-    # 4. 外推未來預測值 (使用未來自變數帶入模型 predict)
-    X_未來_const = sm.add_constant(X_未來, has_constant='add')
-    預估季_陣列 = pd.Series(最終模型擬合.predict(X_未來_const), index=X_未來.index)
+    外推步數 = len(未來季度索引)
 
-    # 防禦機制：發散與 NaN 採最後 4 季平均值填充
+    # 4. 分支處理外推未來預測值與模型參數 (OLS vs 純 Y 時序模型)
+    if is_ols:
+        X_未來_const = sm.add_constant(X_未來_有效, has_constant='add')
+        預測值_array = 最終模型擬合.predict(X_未來_const)
+        預估季_陣列 = pd.Series(預測值_array, index=未來季度索引)
+        
+        # 提取 OLS 的斜率與 R2
+        params = 最終模型擬合.params
+        slope = params.iloc[1] if len(params) > 1 else 0.0
+        rsquared = getattr(最終模型擬合, 'rsquared', np.nan)
+    else:
+        # 當純 Y 時序模型勝出時，呼叫時序模型原生的 forecast API
+        try:
+            forecast_res = 最終模型擬合.forecast(steps=外推步數)
+            if isinstance(forecast_res, (pd.Series, pd.DataFrame)):
+                預估季_陣列 = pd.Series(forecast_res.values, index=未來季度索引)
+            else:
+                預估季_陣列 = pd.Series(forecast_res, index=未來季度索引)
+        except Exception:
+            # 備援填補：以訓練集最近 4 季平均填補
+            安全值 = y_best_train.tail(4).mean()
+            預估季_陣列 = pd.Series(安全值, index=未來季度索引)
+        
+        slope = 0.0
+        rsquared = np.nan
+
+    # 5. 防禦機制：發散與 NaN 採最後 4 季平均值填充
     if 預估季_陣列.isna().any() or np.isinf(預估季_陣列.values).any():
         安全填補值 = y_best_train.tail(4).mean()
         安全填補值 = 安全填補值 if pd.notna(安全填補值) else 0.0
@@ -217,13 +234,8 @@ def 以單元迴歸預估至次年底每季值(
 
     預估季_序列 = 預估季_陣列
 
-    # 5. 整合與計算各項延伸統計指標
+    # 6. 整合與計算各項延伸統計指標
     預估各季全序列 = pd.concat([y, 預估季_序列])
-
-    # 提取第一個自變數的斜率 (趨勢) 與 R2
-    params = 最終模型擬合.params
-    slope = params.iloc[1] if len(params) > 1 else 0.0  # 第一個自變數的迴歸係數
-    rsquared = 最終模型擬合.rsquared                     # 判定係數 R^2
 
     最近歷史值同比 = (
         (y.iloc[-1] - y.iloc[-5]) / y.iloc[-5]
@@ -238,13 +250,11 @@ def 以單元迴歸預估至次年底每季值(
     最近季度 = y.index[-1]
     最後預估值時間 = 預估季_序列.index[-1]
 
-    # 6. 回傳最終彙整 Series
+    # 7. 回傳最終彙整 Series
     return pd.Series({
         "預估各季值": 預估各季全序列,
         "模型名稱": 模型結果["模型名稱"],
-        "指標說明": 模型結果["指標說明"],
         "誤差率": 模型結果["誤差率"],
-        "較無腦模型改善率": 模型結果["較無腦模型改善率"],
         "歷史值數量": len(y),
         "預估值數量": 外推步數,
         "回測資料數": 回測季數,

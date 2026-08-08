@@ -11,9 +11,12 @@ class Test(unittest.TestCase):
         from zhongwen.表 import 表示
         import zhongwen.快取
         zhongwen.快取.停止快取 = True
-        股票 = '是方'
-        r = 預估次年底淨利(股票)
-        表示(r)
+        股票 = '遠傳'
+        # r = 預估次年底淨利(股票)
+        h = 取財報彙總表(股票)
+        r = 預估至次年底每季值丙式(h.營利)
+        print(表達預估說明丙(r))
+        # 表示(r)
         self.assertFalse(True)
 
 if __name__ == '__main__':
