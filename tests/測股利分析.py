@@ -19,15 +19,10 @@ class Test(unittest.TestCase):
         from zhongwen.時 import 今日, 上年度
         from zhongwen.表 import 表示
         # cache.clear()
-        # d, r = 取上年度股利及說明('中菲')
-        # print(d)
-        # print(r) 
-        # 富林二千廿四年股利 = df.query(
-            # '公司代號==@查股票代號("富林-KY") and 股利所屬年度.dt.year==2024').iloc[-1]
-        # r = 取除權息概述('泰山')
-        r = 預測股利('中鋼')
+        r = 預測股利('星宇航空')
         表示(r)
         # self.assertEqual(r, m)
+        self.assertFalse(True)
 
 
     def test預測配息率(self):

@@ -9,7 +9,7 @@ def 自月營收逐步推估淨利(月營收, 營利, 業外損益, 稅前淨利
     from zhongwen.表 import 表示
     from twse_crawler.預估至次年底每月值 import 預估至次年底每月值丙式
     from twse_crawler.以單元迴歸預估至次年底每季值 import 以單元迴歸預估至次年底每季值
-    from twse_crawler.預估至次年底每季值 import 預估至次年底每季值丙式
+    from twse_crawler.預估至次年底每季值 import 預估至次年底每季值丙式, 表達預估方法丙, 表達預估說明丙
 
     if 月營收 is not None: # 自月營收逐步預測淨利
         模型名稱 = '自月營收逐步預測淨利'
@@ -40,9 +40,21 @@ def 自月營收逐步推估淨利(月營收, 營利, 業外損益, 稅前淨利
     x3_future = x3_all[x3_all.index > y.index.max()]
     y_forecast = 以單元迴歸預估至次年底每季值(x3, y, x3_future)
     y_all = y_forecast.預估各季值
-    最近歷史值同比 = (y_all[最近季度] - y_all[最近季度-4]) / y_all[最近季度-4] 
-    首期預估值同比 = (y_all[最近季度+1] - y_all[最近季度-3]) / y_all[最近季度-3] 
-    from twse_crawler.預估至次年底每季值 import 表達預估說明丙
+    # 最近歷史值同比 = (y_all[最近季度] - y_all[最近季度-4]) / y_all[最近季度-4] 
+    # 首期預估值同比 = (y_all[最近季度+1] - y_all[最近季度-3]) / y_all[最近季度-3] 
+    # 處理「最近歷史值同比」
+    if (最近季度 - 4) in y_all.index and y_all[最近季度 - 4] != 0:
+        最近歷史值同比 = (y_all[最近季度] - y_all[最近季度 - 4]) / y_all[最近季度 - 4]
+    else:
+        最近歷史值同比 = None  # 或 float('nan')
+
+    # 處理「首期預估值同比」
+    if (最近季度 - 3) in y_all.index and y_all[最近季度 - 3] != 0:
+        首期預估值同比 = (y_all[最近季度 + 1] - y_all[最近季度 - 3]) / y_all[最近季度 - 3]
+    else:
+        首期預估值同比 = None  # 或 float('nan')
+        from twse_crawler.預估至次年底每季值 import 表達預估說明丙
+
     if 月營收 is not None: # 自月營收逐步預測淨利
         各項預估說明 = (
                 f'【月營收預估】{表達預估說明丙(x_forecast, '營收')}'
