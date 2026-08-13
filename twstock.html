@@ -1,0 +1,414 @@
+<div class="blogger-table-wrapper">
+    <div id="loading-blogger" style="text-align: center; padding: 60px 0; font-size: 16px; color: #a0a0a0; font-family: sans-serif;">
+        資料載入中，請稍候...
+    </div>
+        <div class="table-responsive-blogger" id="table-container-blogger" style="display: none;">
+        <table id="investment-table-blogger">
+            <thead>
+                <tr id="table-header-blogger"></tr>
+            </thead>
+            <tbody id="table-body-blogger"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="global-tooltip-blogger"></div>
+
+<style>
+    .blogger-table-wrapper {
+        width: 100%;
+        margin: 20px 0;
+        position: relative;
+        font-family: "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+        background-color: #121212; 
+    }
+
+    .table-responsive-blogger {
+        width: 100%;
+        max-height: 650px; 
+        overflow-y: auto;  
+        overflow-x: hidden; 
+        border: 1px solid #2d2d2d;
+        border-radius: 4px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #investment-table-blogger {
+        width: 100%;
+        table-layout: fixed; 
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 13px;
+        margin: 0 !important; 
+        background-color: #1a1a1a;
+        color: #ffffff !important;
+    }
+
+    #investment-table-blogger th {
+        background-color: #0d0d0d;
+        color: #ffffff !important;
+        font-weight: 600;
+        padding: 12px 6px;
+        white-space: normal; 
+        word-break: break-all;
+        vertical-align: middle;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 2px 2px rgba(0,0,0,0.3);
+    }
+
+    #investment-table-blogger th.sortable {
+        cursor: pointer;
+        user-select: none;
+        transition: background-color 0.2s;
+    }
+    #investment-table-blogger th.sortable:hover {
+        background-color: #242424;
+    }
+
+    #investment-table-blogger th.sortable::after {
+        content: "";
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 4px;
+        width: 0;
+        height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 4px solid #555555; 
+        border-bottom: 0;
+    }
+    
+    #investment-table-blogger th.sort-desc::after {
+        border-top: 4px solid #18bc9c;
+        border-bottom: 0;
+    }
+    
+    #investment-table-blogger th.sort-asc::after {
+        border-bottom: 4px solid #18bc9c;
+        border-top: 0;
+    }
+
+    #investment-table-blogger td {
+        padding: 10px 6px;
+        border-bottom: 1px solid #282828;
+        vertical-align: middle;
+        line-height: 1.4;
+        white-space: normal; 
+        word-break: break-all; 
+    }
+
+    /* 欄位寬度配比（總和 100%） */
+    .col-company { width: 17%; } 
+    .col-type    { width: 15%; } 
+    .col-p       { width: 11%; } 
+    .col-s1      { width: 10%; } 
+    .col-s2      { width: 13%; } 
+    .col-s3      { width: 10%; } 
+    .col-err     { width: 12%; } 
+    .col-r       { width: 12%; } 
+
+    .company-name {
+        font-weight: 600;
+        color: #ffffff;
+    }
+    .company-id {
+        font-size: 11px;
+        color: #a0a0a0;
+    }
+    
+    .company-name, .company-id {
+        pointer-events: none; 
+    }
+
+    #investment-table-blogger tr:nth-child(even) td {
+        background-color: #222222;
+    }
+
+    .text-right {
+        text-align: right !important;
+    }
+
+    .cell-hoverable-blogger {
+        border-bottom: 1px dashed #aaaaaa !important;
+        font-weight: bold;
+        cursor: pointer; 
+    }
+
+    /* 響應式中央提示視窗樣式 */
+    #global-tooltip-blogger {
+        position: fixed;
+        z-index: 99999; 
+        display: none;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%); 
+        width: 90%;       
+        max-width: 450px;  
+        max-height: 50vh;  
+        overflow-y: auto;
+        padding: 20px;
+        background-color: rgba(13, 13, 13, 0.98);
+        border: 1px solid #333333;
+        color: #ffffff !important;
+        font-size: 14px;
+        font-weight: normal;
+        line-height: 1.6;
+        border-radius: 8px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+        box-sizing: border-box;
+        cursor: pointer; 
+        white-space: pre-wrap; 
+        word-break: break-all; 
+    }
+
+    #global-tooltip-blogger::-webkit-scrollbar {
+        width: 6px;
+    }
+    #global-tooltip-blogger::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+    }
+</style>
+
+<script>
+(function() {
+    const jsonUrl = "https://gist.githubusercontent.com/fhopecc/fbc1ce4a57f201a0e9e5cc17ddba0fe4/raw/investment_report.json";
+
+    const displayColumns = [
+        { name: '公司', class: 'col-company', isSortable: false, isSpecialCompany: true, shouldColor: false },
+        { name: '產業類別', class: 'col-type', isSortable: false, shouldColor: false },
+        { name: '收盤價', class: 'col-p', isSortable: false, shouldColor: false },
+        { name: '分數', class: 'col-s1', isSortable: true, shouldColor: true },
+        { name: '護城河分數', class: 'col-s2', isSortable: true, shouldColor: true },
+        { name: '總分', class: 'col-s3', isSortable: true, shouldColor: true },
+        { name: '誤差率', class: 'col-err', isSortable: true, shouldColor: true, isPercent: true },
+        { name: '報酬率', class: 'col-r', isSortable: true, shouldColor: true, isPercent: true }
+    ];
+
+    // 🛠️ 彈窗對應關係修改：將「誤差率」設定點擊時顯示 JSON 資料中的「預估詳情」
+    const tooltipMapping = {
+        '報酬率': '預測報酬率說明',
+        '分數': '評語',
+        '護城河分數': '護城河評語',
+        '總分': '近一季重大訊息',
+        '誤差率': '預估詳情' // 👈 點擊誤差率時呈現「預估詳情」內容
+    };
+
+    let tooltipEl;
+    let allRecords = []; 
+    let renderedCount = 0; 
+    let currentTimeoutId = null; 
+    let currentSortColumn = null; 
+    let currentSortOrder = 'desc'; 
+    let columnBounds = {};
+
+    const BATCH_SIZE = 100; 
+    const RENDER_DELAY = 10; 
+    const MAX_COLOR_ROWS = 100; 
+
+    function initTable() {
+        tooltipEl = document.getElementById('global-tooltip-blogger');
+        
+        tooltipEl.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            hideTooltip(); 
+        });
+
+        document.addEventListener('click', () => { hideTooltip(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' || e.key === 'Esc') hideTooltip();
+        });
+
+        loadTableData();
+    }
+
+    async function loadTableData() {
+        try {
+            const response = await fetch(jsonUrl);
+            if (!response.ok) throw new Error(`連線失敗 (Status: ${response.status})`);
+            const jsonData = await response.json();
+            
+            allRecords = (jsonData && jsonData.data) ? jsonData.data : (Array.isArray(jsonData) ? jsonData : []);
+            if (allRecords.length === 0) {
+                document.getElementById('loading-blogger').innerHTML = "找不到任何資料。";
+                return;
+            }
+
+            const headerRow = document.getElementById('table-header-blogger');
+            displayColumns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col.name;
+                th.className = col.class;
+                
+                if (col.isSortable) {
+                    th.classList.add('sortable');
+                    th.addEventListener('click', () => handleSort(col.name, th));
+                }
+                headerRow.appendChild(th);
+            });
+
+            document.getElementById('loading-blogger').style.display = 'none';
+            document.getElementById('table-container-blogger').style.display = 'block';
+
+            startNewRenderFlow();
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById('loading-blogger').innerHTML = `<div style="color: #e74c3c;">❌ 讀取資料時發生錯誤：<br>${error.message}</div>`;
+        }
+    }
+
+    function calculateColumnBounds(currentBatchRecords) {
+        columnBounds = {};
+        displayColumns.forEach(col => {
+            if (col.isSortable && col.shouldColor) {
+                let min = Infinity;
+                let max = -Infinity;
+                currentBatchRecords.forEach(item => {
+                    let val = item[col.name];
+                    if (val !== undefined && val !== null && val !== '-') {
+                        let num = Number(val);
+                        if (num < min) min = num;
+                        if (num > max) max = num;
+                    }
+                });
+                columnBounds[col.name] = { min: min, max: max };
+            }
+        });
+    }
+
+    function getGradientBgColor(columnName, value) {
+        if (value === undefined || value === null || value === '-') return 'transparent';
+        
+        const bounds = columnBounds[columnName];
+        if (!bounds || bounds.max === bounds.min) return 'transparent';
+
+        let ratio = (value - bounds.min) / (bounds.max - bounds.min);
+        if (ratio < 0) ratio = 0;
+        if (ratio > 1) ratio = 1;
+
+        let hue = 120 * (1 - ratio);
+        return `hsl(${hue}, 65%, 25%)`;
+    }
+
+    function handleSort(columnName, thElement) {
+        if (currentSortColumn === columnName) {
+            currentSortOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
+        } else {
+            currentSortColumn = columnName;
+            currentSortOrder = 'desc'; 
+        }
+
+        document.querySelectorAll('#table-header-blogger th').forEach(th => {
+            th.classList.remove('sort-desc', 'sort-asc');
+        });
+        thElement.classList.add(currentSortOrder === 'desc' ? 'sort-desc' : 'sort-asc');
+
+        allRecords.sort((a, b) => {
+            let val = a[columnName];
+            let valB = b[columnName];
+            let isAValid = val !== undefined && val !== null && val !== '-';
+            let isBValid = valB !== undefined && valB !== null && valB !== '-';
+            if (!isAValid && !isBValid) return 0;
+            if (!isAValid) return 1; 
+            if (!isBValid) return -1;
+            return currentSortOrder === 'desc' ? valB - val : val - valB;
+        });
+
+        startNewRenderFlow();
+    }
+
+    function startNewRenderFlow() {
+        if (currentTimeoutId) clearTimeout(currentTimeoutId); 
+        
+        const topRecords = allRecords.slice(0, MAX_COLOR_ROWS);
+        calculateColumnBounds(topRecords);
+
+        const tableBody = document.getElementById('table-body-blogger');
+        tableBody.innerHTML = ''; 
+        renderedCount = 0; 
+        hideTooltip(); 
+        loadChunksSequentially(); 
+    }
+
+    function loadChunksSequentially() {
+        if (renderedCount >= allRecords.length) return; 
+
+        const tableBody = document.getElementById('table-body-blogger');
+        const fragment = document.createDocumentFragment();
+        const nextBatch = allRecords.slice(renderedCount, renderedCount + BATCH_SIZE);
+        
+        nextBatch.forEach((item, index) => {
+            const globalIndex = renderedCount + index; 
+            const tr = document.createElement('tr');
+            
+            displayColumns.forEach(col => {
+                const td = document.createElement('td');
+                td.className = col.class;
+                
+                let baseBg = (globalIndex % 2 === 0) ? '#1a1a1a' : '#222222';
+                td.style.backgroundColor = baseBg;
+                
+                if (col.isSpecialCompany) {
+                    const cName = item['公司簡稱'] !== undefined ? item['公司簡稱'] : '-';
+                    const cId = item['公司代號'] !== undefined ? item['公司代號'] : '-';
+                    td.innerHTML = `<span class="company-name">${cName}</span><br><span class="company-id">${cId}</span>`;
+                } else {
+                    let fieldName = col.name;
+                    let val = item[fieldName] !== undefined && item[fieldName] !== null ? item[fieldName] : '-';
+                    
+                    if (col.isPercent && typeof val === 'number') {
+                        let displayVal = Math.abs(val) <= 1 ? (val * 100).toFixed(2) : val.toFixed(2);
+                        td.textContent = displayVal + '%';
+                        td.classList.add('text-right');
+                    } else if (typeof val === 'number') {
+                        td.textContent = val;
+                        td.classList.add('text-right');
+                    } else {
+                        td.textContent = val;
+                    }
+
+                    if (col.isSortable && val !== '-' && globalIndex < MAX_COLOR_ROWS && col.shouldColor) {
+                        td.style.backgroundColor = getGradientBgColor(fieldName, val);
+                    }
+
+                    const tipColumn = tooltipMapping[fieldName];
+                    if (tipColumn && item[tipColumn]) {
+                        td.classList.add('cell-hoverable-blogger');
+                        td.addEventListener('click', (e) => {
+                            e.stopPropagation(); 
+                            showTooltip(item[tipColumn]);
+                        });
+                    }
+                }
+                
+                tr.appendChild(td);
+            });
+            
+            fragment.appendChild(tr);
+        });
+
+        tableBody.appendChild(fragment);
+        renderedCount += nextBatch.length;
+
+        currentTimeoutId = setTimeout(loadChunksSequentially, RENDER_DELAY);
+    }
+
+    function showTooltip(text) {
+        tooltipEl.textContent = text;
+        tooltipEl.style.display = 'block';
+    }
+
+    function hideTooltip() {
+        if (tooltipEl) tooltipEl.style.display = 'none';
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTable);
+    } else {
+        initTable();
+    }
+})();
+</script>
