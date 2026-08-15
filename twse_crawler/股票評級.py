@@ -223,6 +223,12 @@ def 顯示股票評級彙總表(報酬率下限=0) -> "pandas.DataFrame":
                ,'報酬率', '誤差率', '產業類別', '護城河分數', '預測報酬率說明', '預估詳情'
                ,'護城河評語', '評語', '近一季重大訊息'
                ]
+    # 💡 確保報酬率欄位存在，避免 query 錯誤
+    if '報酬率' not in df.columns:
+        df['報酬率'] = 0.0
+    else:
+        df['報酬率'] = df['報酬率'].fillna(0.0)
+
     df = df.query('報酬率>@報酬率下限')
     df["公司簡稱"] = df.公司簡稱.apply(取股票詳情連結)
     df['總分'] = df.總分.fillna(0).map(int)
@@ -365,17 +371,25 @@ def 評定基礎分數(股票) -> "pandas.Series":
 if __name__ == '__main__':
     from zhongwen.程式 import 列出函數執行時間表
     from twse_crawler.蒐整財務資訊 import 蒐整財務資訊
-    import twse_crawler.財報分析
     import twse_crawler.資產負債表分析
+    import twse_crawler.損益表分析
+    import twse_crawler.現流表分析
+    import twse_crawler.財報分析
+    import twse_crawler.行情分析
     import zhongwen.快取
     import logging
     logging.getLogger('googleapiclient').setLevel(logging.CRITICAL)
     logging.basicConfig(level=logging.INFO)
-    # twse_crawler.資產負債表分析.cache.clear()
-    # twse_crawler.財報分析.cache.clear()
-    # zhongwen.快取.停止快取=True
-    # cache.clear()
+
     # 蒐整財務資訊()
+    twse_crawler.行情分析.cache.clear()
+    twse_crawler.資產負債表分析.cache.clear()
+    twse_crawler.現流表分析.cache.clear()
+    twse_crawler.損益表分析.cache.clear()
+    twse_crawler.財報分析.cache.clear()
+    cache.clear()
+    zhongwen.快取.停止快取=True
+
     df = 顯示股票評級彙總表(0.05)
     from 股票分析.投資績效 import 更新在線股票分析結果
     更新在線股票分析結果(df)
