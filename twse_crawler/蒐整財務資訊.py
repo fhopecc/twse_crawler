@@ -73,7 +73,6 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
                 爬取損益表(應更新季度)
                 logger.info(f'爬取{取民國季度(應更新季度)}現流表')
                 爬取現流表(應更新季度)
-    
     # 更新落後2月以上之月營收
     logger.info('更新落後2月以上之月營收')
     from twse_crawler.公開資訊觀測站爬蟲 import 抓取月營收彙總表
@@ -111,6 +110,14 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
             print(tabulate(df_lag))
             if not 僅顯示落後資訊不予更新:
                 抓取月自結損益彙總表(本月-lag_mon+1)
+
+    twse_crawler.行情分析.cache.clear()
+    twse_crawler.資產負債表分析.cache.clear()
+    twse_crawler.現流表分析.cache.clear()
+    twse_crawler.損益表分析.cache.clear()
+    twse_crawler.財報分析.cache.clear()
+    twse_crawler.自結損益.cache.clear()
+    twse_crawler.營收分析.cache.clear()
 
 def 取股票資料最近時間(股票) -> "pandas.Series":
     '''
@@ -161,7 +168,7 @@ def 增加股票分析函數依資料時間更新快取功能(快取檔: "diskca
                 except KeyError: pass
             r = 股票分析函數(股票)
             快取檔[f'{股票分析函數.__name__}({股票})'] = r
-            return r 
+            return  
         return 可依資料時間更新快取之股票分析函數
     return 取可依資料時間更新快取之股票分析函數
 
