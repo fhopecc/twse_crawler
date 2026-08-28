@@ -371,22 +371,32 @@ def 評定基礎分數(股票) -> "pandas.Series":
 if __name__ == '__main__':
     from zhongwen.程式 import 列出函數執行時間表
     from twse_crawler.蒐整財務資訊 import 蒐整財務資訊
-    import twse_crawler.資產負債表分析
-    import twse_crawler.損益表分析
-    import twse_crawler.現流表分析
-    import twse_crawler.財報分析
-    import twse_crawler.行情分析
+    from pathlib import Path
     import zhongwen.快取
     import logging
+    import sys
     logging.getLogger('googleapiclient').setLevel(logging.CRITICAL)
-    logging.basicConfig(level=logging.INFO)
 
-    # 蒐整財務資訊()
-    twse_crawler.行情分析.cache.clear()
-    twse_crawler.資產負債表分析.cache.clear()
-    twse_crawler.現流表分析.cache.clear()
-    twse_crawler.損益表分析.cache.clear()
-    twse_crawler.財報分析.cache.clear()
+    # 1. 建立 Logger
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    # 2. 建立輸出格式
+    # formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+    # 3. 建立檔案 Handler（寫入 log 檔）
+    log = Path.home() / '.twse_crawler' / '股票評級.log'
+    file_handler = logging.FileHandler(log, mode='w', encoding='utf-8')
+    # file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # 4. 建立終端機 Handler（輸出到標準輸出）
+    stream_handler = logging.StreamHandler(sys.stdout)
+    # stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+
+    蒐整財務資訊()
+
     cache.clear()
     zhongwen.快取.停止快取=True
 
