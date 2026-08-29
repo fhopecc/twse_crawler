@@ -3,7 +3,6 @@ import unittest
 class Test(unittest.TestCase):
     '依方法名稱字母順序測試'
     def test(self):
-        from twse_crawler.預估至次年底每日值 import 取預估至次年底工作日值模型
         from twse_crawler.預估至次年底每日值 import 預估至次年底工作日值丙式
         from twse_crawler.預估至次年底每季值 import 表達預估方法丙, 表達預估說明丙
         from twse_crawler.鉛價分析 import 取鉛價
