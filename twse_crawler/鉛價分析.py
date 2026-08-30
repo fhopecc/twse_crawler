@@ -25,7 +25,7 @@ def 抓取年度鉛價(年度數):
     from zhongwen.數 import 取數值
     from dateutil import parser
     import pandas as pd
-    import time 
+    import time
     logger.info(f'爬取{年度數}年度鉛價……')
     url = 'https://www.westmetall.com/en/markdaten.php'
     url += f'?action=table&field=LME_Pb_cash&year={年度數}'
