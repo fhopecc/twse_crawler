@@ -188,8 +188,11 @@ def 取股票基本資料彙總表(股票=None):
     df['成立日期產業排名'] = df.groupby('產業類別')['成立日期'].rank()
     df['已發行普通股數或TDR原發行股數'] = df['已發行普通股數或TDR原發行股數'].map(取數值)
 
-    df1 = 取公司發行可轉債彙總表()
-    df = df.merge(df1, how='left', left_on='公司代號', right_on='機構代碼')
+    try:
+        df1 = 取公司發行可轉債彙總表()
+        df = df.merge(df1, how='left', left_on='公司代號', right_on='機構代碼')
+    except Exception as e:
+        logger.error(f'取公司發行可轉債彙總表時發生：{e}')
 
     df2 = 取上市櫃公用天然氣業彙總表()
     df = df.merge(df2, how='left', left_on='公司代號', right_on='股票代號')
