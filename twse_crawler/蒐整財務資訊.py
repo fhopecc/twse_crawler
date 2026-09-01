@@ -168,7 +168,7 @@ def 增加股票分析函數依資料時間更新快取功能(快取檔: "diskca
                 except KeyError: pass
             r = 股票分析函數(股票)
             快取檔[f'{股票分析函數.__name__}({股票})'] = r
-            return  
+            return r
         return 可依資料時間更新快取之股票分析函數
     return 取可依資料時間更新快取之股票分析函數
 

@@ -7,10 +7,11 @@ class Test(unittest.TestCase):
         from twse_crawler.行情分析 import 預測報酬率, 抓取近一週上市櫃收盤行情
         from twse_crawler.證交所爬蟲 import 抓取上市每日收盤行情
         from twse_crawler.櫃買中心爬蟲 import 抓取上櫃股票行情
+        from twse_crawler.蒐整財務資訊 import 蒐整財務資訊
         from zhongwen.表 import 表示, 數據不足
-        抓取近一週上市櫃收盤行情()
-        cache.clear()
-
+        # 抓取近一週上市櫃收盤行情()
+        # cache.clear()
+        蒐整財務資訊()
         df1 = 取最近上市櫃收盤行情('一零四')
         表示(df1)
         self.assertFalse(True)
