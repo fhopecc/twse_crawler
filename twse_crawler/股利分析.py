@@ -1,4 +1,3 @@
-from zhongwen.pandas_tools import 可顯示, 製作排行榜
 from zhongwen.快取 import 增加快取時序分析結果, 快取至記憶體
 from zhongwen.程式 import 通知執行時間
 from zhongwen.庫 import 增加定期更新

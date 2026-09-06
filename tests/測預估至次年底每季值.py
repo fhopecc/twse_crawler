@@ -8,16 +8,24 @@ class Test(unittest.TestCase):
         from twse_crawler.預估至次年底每季值 import 表達預估方法丙, 表達預估說明丙
         from twse_crawler.預估次年底淨利 import 預估次年底淨利
         from twse_crawler.財報分析 import 取財報彙總表
+        from twse_crawler.鉛價分析 import 以鉛價預測次年底毛利率
         from zhongwen.表 import 表示
         import zhongwen.快取
+        股票 = '泰銘'
+        df = 以鉛價預測次年底毛利率(股票)
+        print(df)
+        print(df.預估方法說明)
+        print(df.預估說明)
+        self.assertFalse(True)
+
         zhongwen.快取.停止快取 = True
+ 
         股票 = '遠傳'
         # r = 預估次年底淨利(股票)
         h = 取財報彙總表(股票)
         r = 預估至次年底每季值丙式(h.營利)
         print(表達預估說明丙(r))
         # 表示(r)
-        self.assertFalse(True)
 
 if __name__ == '__main__':
     import logging

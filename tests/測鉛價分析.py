@@ -11,14 +11,15 @@ class Test(unittest.TestCase):
         from zhongwen.時 import 今年數
         from zhongwen.快取 import 刪除指定名稱快取
         # 刪除指定名稱快取(cache, '以鉛價預測次年每股盈餘')
-        cache.clear()
+        # cache.clear()
         股票 = '泰銘'
         df = 以鉛價預測次年每股盈餘(股票)
-        print(df.預估說明)
+        print(df)
         print(df.預估方法說明)
+        print(df.預估說明)
         self.assertTrue(False)
+        df = 預測次年底鉛價()
         h = 取財報彙總表(股票)
-        m = 以鉛價預測次年底毛利率(股票)
         # r = 以輔助季數據預測至次年底各季數據(股票,輔助數據預測值=m.預測前年至次年底各季毛利率)
         表示(r.每季預測值)
 
