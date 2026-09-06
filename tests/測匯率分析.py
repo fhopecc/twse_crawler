@@ -15,7 +15,7 @@ class Test(unittest.TestCase):
         # df = 預測次年底美元匯率()
         股票 = '泰銘'
         df = 以匯率預測次年底業外損益(股票)
-        print(df.預估方法說明)
+        print(df)
         # 表示(df.預估各季值, 顯示索引=True)
 
 if __name__ == '__main__':
