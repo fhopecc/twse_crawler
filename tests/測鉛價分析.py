@@ -5,19 +5,15 @@ class Test(unittest.TestCase):
     def test(self):
         from twse_crawler.鉛價分析 import 取鉛價, 預測次年底鉛價
         from twse_crawler.鉛價分析 import 以鉛價預測次年每股盈餘
-        from twse_crawler.鉛價分析 import 以鉛價預測次年底毛利率, cache
-        from twse_crawler.財報分析 import 取財報彙總表
+        from twse_crawler.鉛價分析 import 以鉛價預測次年淨利
         from zhongwen.表 import 表示
-        from zhongwen.時 import 今年數
-        from zhongwen.快取 import 刪除指定名稱快取
-        # 刪除指定名稱快取(cache, '以鉛價預測次年每股盈餘')
-        # cache.clear()
         股票 = '泰銘'
-        df = 以鉛價預測次年每股盈餘(股票)
+        self.assertTrue(False)
+        # 改到 預測鉛價要加上回測日數
+        df = 以鉛價預測次年淨利(股票, 回測季數=4)
         print(df)
         print(df.預估方法說明)
         print(df.預估說明)
-        self.assertTrue(False)
         df = 預測次年底鉛價()
         h = 取財報彙總表(股票)
         # r = 以輔助季數據預測至次年底各季數據(股票,輔助數據預測值=m.預測前年至次年底各季毛利率)

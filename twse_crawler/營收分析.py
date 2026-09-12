@@ -474,7 +474,7 @@ def 依台積電資本支出預測營收(股票):
 營收分析快取 = Index(str(Path.home() / '.twse_crawler' / '快取' / '營收分析結果快取檔'))
 
 @通知執行時間
-def 預測次年底營收(股票):
+def 預測次年底營收(股票, 回測月數=0):
     """
     一、預測至次年底各月未公布營收。
     二、欄位：預估每月值、預估每季總值、預估方法說明及預估說明、
@@ -488,11 +488,16 @@ def 預測次年底營收(股票):
     from zhongwen.表 import 表示
     from zhongwen.快取 import 停止快取
     h = 取歷月營收表(股票)
-    try:
-        c = 營收分析快取[f'預測次年底營收({股票})']
-        if not 停止快取 and c.最近歷史值時間 >= h.index.max():
-            return c
-    except KeyError: pass
+    if 回測月數 > 0:
+        回測月份 =  h.營收月份.max()
+        回測月份 -= 回測月數
+        h = h.query('營收月份 <= @回測月份')
+    else:
+        try:
+            c = 營收分析快取[f'預測次年底營收({股票})']
+            if not 停止快取 and c.最近歷史值時間 >= h.index.max():
+                return c
+        except KeyError: pass
     h = h.營收
     p = 預估至次年底每月值丙式(h)
     p['預估方法說明'] = 表達預估方法丙(p, '營收', 時間單位='月')
