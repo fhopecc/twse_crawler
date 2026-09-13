@@ -222,7 +222,7 @@ def 以單元迴歸預估至次年底每季值(
             # 備援填補：以訓練集最近 4 季平均填補
             安全值 = y_best_train.tail(4).mean()
             預估季_陣列 = pd.Series(安全值, index=未來季度索引)
-        
+
         slope = 0.0
         rsquared = np.nan
 

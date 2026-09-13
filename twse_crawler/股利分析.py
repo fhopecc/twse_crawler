@@ -373,8 +373,7 @@ def 預測股利(股票, 歷年股利=None):
     from zhongwen.數 import 取增減百分比
     import pandas as pd
     配息率, 配息率說明 = 預測配息率(股票)
-    for 預測每股盈餘 in [以鉛價預測次年每股盈餘
-                        ,以淨利預測次年每股盈餘
+    for 預測每股盈餘 in [以淨利預測次年每股盈餘
                         ]:
         try:
             r = 預測每股盈餘(股票)

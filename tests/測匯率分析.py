@@ -13,7 +13,7 @@ class Test(unittest.TestCase):
         from zhongwen.表 import 表示
         cache.clear()
         股票 = '泰銘'
-        df = 以匯率預測次年底業外損益(股票, 回測季數=4)
+        df = 以匯率預測次年底業外損益(股票, 回滾季數=4)
         表示(df, 顯示索引=True)
         self.assertFalse(True)
         # 表示(df.預估各季值, 顯示索引=True)

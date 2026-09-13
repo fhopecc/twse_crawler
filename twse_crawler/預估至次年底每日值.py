@@ -152,13 +152,13 @@ def 取預估至次年度每日值模型(歷日數值: "pd.Series") -> "pd.Serie
         最佳訓練資料數 = len(y_原始) - 回測工作日數
         y_最終訓練 = y_原始
 
-        if min(naive_wmpe, naive_swmpe) <= min(snaive_wmpe, snaive_swmpe):
+        if naive_wmpe <= snaive_wmpe:
             模型顯示名稱 = "以上期值預測"
-            誤差率 = min(naive_wmpe, naive_swmpe)
+            誤差率 = naive_wmpe
             最終模型擬合 = NaiveFitResult(mode='naive', y_train=y_最終訓練)
         else:
             模型顯示名稱 = "以去年同期值預測"
-            誤差率 = min(snaive_wmpe, snaive_swmpe)
+            誤差率 = snaive_wmpe
             最終模型擬合 = NaiveFitResult(mode='snaive', y_train=y_最終訓練)
 
     較無腦模型改善率 = (無腦基線最優誤差 - 誤差率) / 無腦基線最優誤差 if 無腦基線最優誤差 > 0 and not np.isinf(無腦基線最優誤差) else np.nan

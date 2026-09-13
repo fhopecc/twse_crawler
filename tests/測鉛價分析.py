@@ -5,15 +5,15 @@ class Test(unittest.TestCase):
     def test(self):
         from twse_crawler.鉛價分析 import 取鉛價, 預測次年底鉛價
         from twse_crawler.鉛價分析 import 以鉛價預測次年底毛利率
-        from twse_crawler.鉛價分析 import 以鉛價預測次年每股盈餘
         from twse_crawler.鉛價分析 import 以鉛價預測次年淨利
         from twse_crawler.匯率分析 import 以匯率預測次年底業外損益
         from zhongwen.表 import 表示
         import pandas as pd
-        df = 以鉛價預測次年淨利(股票, 回測季數=4)
+        股票 = '泰銘'
+        df = 以鉛價預測次年淨利(股票)
         表示(df.tail(100), 顯示索引=True)
         self.assertTrue(False)
-        # 改到 預測鉛價要加上回測日數
+        # 改到 預測鉛價要加上回滾日數
         print(df)
         print(df.預估方法說明)
         print(df.預估說明)

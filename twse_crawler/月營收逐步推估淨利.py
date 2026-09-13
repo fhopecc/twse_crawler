@@ -113,7 +113,7 @@ def 取自月營收或營利逐步推論較佳者(股票):
 
 def 以月營收逐步推估淨利(股票):
     '''
-    一、各項預估說明
+    一、誤差率、各項預估說明
     '''
     from twse_crawler.財報分析 import 取財報彙總表
     from twse_crawler.營收分析 import 取歷月營收表
