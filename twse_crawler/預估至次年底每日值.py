@@ -1,11 +1,11 @@
 def 取預估至次年度每日值模型(歷日數值: "pd.Series") -> "pd.Series":
     """
     一、主要欄位：模型擬合、模型名稱、採用指標、誤差率、較無腦模型改善率、
-                 最佳訓練資料數、回測資料數。
+                  最佳訓練資料數、回測資料數。
     二、輔助欄位：指標說明、wmpe、swmpe、naive_wmpe、naive_swmpe、
-                 snaive_wmpe、snaive_swmpe、_y_原始、_y_最終訓練。
+                  snaive_wmpe、snaive_swmpe、_y_原始、_y_最終訓練。
     三、最佳模型：回測 30 個工作日評估指標最小之 Theta 模型。若 Theta 表現不如無腦模型，
-        則建立 NaiveFitResult 擬合物件並回傳，避免傳回較差結果[cite: 1, 2]。
+                  則建立 NaiveFitResult 擬合物件並回傳，避免傳回較差結果[cite: 1, 2]。
     四、搜尋次數：固定執行 30 次 Optuna 試驗，兼顧搜尋品質與速度[cite: 2]。
     """
     import warnings
@@ -44,7 +44,7 @@ def 取預估至次年度每日值模型(歷日數值: "pd.Series") -> "pd.Serie
                 vals = np.full(steps, self.last_value)
             return pd.Series(vals)
 
-    回測工作日數 = 30
+    回測工作日數 = 90
     N_TRIALS = 30
     SEASON_PERIOD = 252
 
@@ -134,13 +134,11 @@ def 取預估至次年度每日值模型(歷日數值: "pd.Series") -> "pd.Serie
     
     naive_pred = np.full(回測工作日數, y_原始.iloc[-回測工作日數-1])
     naive_wmpe = calc_wmpe(真實值, naive_pred)
-    naive_swmpe = calc_swmpe(真實值, naive_pred, snaive_base)
 
     snaive_pred = snaive_base
     snaive_wmpe = calc_wmpe(真實值, snaive_pred)
-    snaive_swmpe = calc_swmpe(真實值, snaive_pred, snaive_base)
 
-    無腦基線最優誤差 = min(naive_wmpe, naive_swmpe, snaive_wmpe, snaive_swmpe)
+    無腦基線最優誤差 = min(naive_wmpe, snaive_wmpe)
 
     if theta_best_error < 無腦基線最優誤差:
         誤差率 = theta_best_error
@@ -149,7 +147,7 @@ def 取預估至次年度每日值模型(歷日數值: "pd.Series") -> "pd.Serie
         
         tm = ThetaModel(y_最終訓練, period=SEASON_PERIOD, deseasonalize=勝出季節性)
         最終模型擬合 = tm.fit()
-        模型顯示名稱 = f"最小 {勝出指標.upper()} 之{'季節性' if 勝出季節性 else ''} Theta"
+        模型顯示名稱 = f"{'季節性' if 勝出季節性 else ''} Theta"
     else:
         最佳訓練資料數 = len(y_原始) - 回測工作日數
         y_最終訓練 = y_原始
@@ -177,11 +175,8 @@ def 取預估至次年度每日值模型(歷日數值: "pd.Series") -> "pd.Serie
         "指標說明": 指標說明,
         "誤差率": 誤差率,
         "wmpe": best_wmpe,
-        "swmpe": best_swmpe,
         "naive_wmpe": naive_wmpe,
-        "naive_swmpe": naive_swmpe,
         "snaive_wmpe": snaive_wmpe,
-        "snaive_swmpe": snaive_swmpe,
         "較無腦模型改善率": 較無腦模型改善率,
         "最佳訓練資料數": 最佳訓練資料數,
         "回測資料數": 回測工作日數,
@@ -191,13 +186,12 @@ def 取預估至次年度每日值模型(歷日數值: "pd.Series") -> "pd.Serie
 
 
 def 預估至次年底工作日值丙式(
-    歷日數值: "pd.Series",
-    單位 = '元'
+    歷日數值: "pd.Series"
 ) -> "pd.Series":
     """
     一、預測結果：預估每日值、預估季均值、模型名稱、誤差率、歷史值數量、預估值數量、
-                 回測資料數、最佳訓練資料數、趨勢、近期影響權重、最近歷史值時間、
-                 最後預估值時間、最近歷史值同比、首期預估值同比。
+                  回測資料數、最佳訓練資料數、趨勢、近期影響權重、最近歷史值時間、
+                  最後預估值時間、最近歷史值同比、首期預估值同比。
     二、對齊每季值：統一返回與每季值相同的簡潔結構。
     """
     import numpy as np
