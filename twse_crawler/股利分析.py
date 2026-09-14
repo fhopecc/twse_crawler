@@ -364,7 +364,6 @@ def 預測股利(股票, 歷年股利=None):
     四、如已公布上年度股利，則說明較預測增減情形。
     '''
     from twse_crawler.預估次年底淨利 import 以淨利預測次年每股盈餘
-    from twse_crawler.鉛價分析 import 以鉛價預測次年每股盈餘
     from twse_crawler.損益表分析 import 取損益表, 取前年至次年各季損益表
     from twse_crawler.股票基本資料分析 import 查股票簡稱, 查股票代號
     from zhongwen.快取 import 刪除指定名稱快取
@@ -373,8 +372,7 @@ def 預測股利(股票, 歷年股利=None):
     from zhongwen.數 import 取增減百分比
     import pandas as pd
     配息率, 配息率說明 = 預測配息率(股票)
-    for 預測每股盈餘 in [以淨利預測次年每股盈餘
-                        ]:
+    for 預測每股盈餘 in [以淨利預測次年每股盈餘]:
         try:
             r = 預測每股盈餘(股票)
             前年至次年每股盈餘 = r.前年至次年每股盈餘

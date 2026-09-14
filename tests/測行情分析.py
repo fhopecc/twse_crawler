@@ -8,12 +8,14 @@ class Test(unittest.TestCase):
         from twse_crawler.證交所爬蟲 import 抓取上市每日收盤行情
         from twse_crawler.櫃買中心爬蟲 import 抓取上櫃股票行情
         from twse_crawler.蒐整財務資訊 import 蒐整財務資訊
+        import twse_crawler.蒐整財務資訊 
         from zhongwen.表 import 表示, 數據不足
-        # 抓取近一週上市櫃收盤行情()
+        # df = 抓取近一週上市櫃收盤行情()
         # cache.clear()
-        蒐整財務資訊()
-        df1 = 取最近上市櫃收盤行情('一零四')
-        表示(df1)
+        # twse_crawler.蒐整財務資訊.cache.clear()
+        # 蒐整財務資訊()
+        df = 取最近上市櫃收盤行情('一零四')
+        表示(df)
         self.assertFalse(True)
         self.assertFalse(df1.empty)
         self.assertTrue(必須欄位.issubset(r.index)) 

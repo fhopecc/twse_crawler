@@ -28,7 +28,10 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     from zhongwen.表 import 表示
     import pandas as pd
     下市櫃股票代號 = twse_crawler.股票基本資料分析.取下市櫃股票代號()
-    抓取近一週上市櫃收盤行情()
+    try:
+        抓取近一週上市櫃收盤行情()
+    except Exception as e:
+        logger.error(f'抓取近一週上市櫃收盤行情發生：{e}')
     # 更新重大訊息
     logger.info('更新重大訊息')
     from twse_crawler.重大訊息分析 import 載入近一季重大訊息
@@ -115,6 +118,7 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
     twse_crawler.資產負債表分析.cache.clear()
     twse_crawler.現流表分析.cache.clear()
     twse_crawler.損益表分析.cache.clear()
+    import twse_crawler.財報分析
     twse_crawler.財報分析.cache.clear()
     twse_crawler.自結損益.cache.clear()
     twse_crawler.營收分析.cache.clear()

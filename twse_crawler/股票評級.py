@@ -233,7 +233,14 @@ def 顯示股票評級彙總表(報酬率下限=0) -> "pandas.DataFrame":
     df["公司簡稱"] = df.公司簡稱.apply(取股票詳情連結)
     df['總分'] = df.總分.fillna(0).map(int)
     df.sort_values(['總分', '報酬率'], ascending=False, inplace=True)
-    df = df[顯示欄位]
+    try:
+        df = df[顯示欄位]
+    except Exception as e:
+        logger.error(f'股票評級發生：{e}')
+        from zhongwen.表 import 表示
+        表示(df)
+        表示(dfo)
+
     樣式, 可顯示資料框 = 顯示(df, 不顯示=True
         ,整數欄位=['總分', '分數', '護城河分數']
         ,百分比欄位=['報酬率']
