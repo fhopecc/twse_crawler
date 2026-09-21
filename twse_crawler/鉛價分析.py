@@ -52,10 +52,13 @@ def 取鉛價():
     df = 批次載入(鉛價庫, '鉛價', '年度數', 時間欄位='日期', 起始批號=2008).sort_values('日期')
     df = df.set_index('日期')
     最近日期 = df.index.max()
-    if 最近日期 < 昨日:
-        抓取年度鉛價(昨日.year)
-        df = 批次載入(鉛價庫, '鉛價', '年度數', 時間欄位='日期', 起始批號=2008).sort_values('日期')
-        df = df.set_index('日期')
+    try:
+        if 最近日期 < 昨日:
+            抓取年度鉛價(昨日.year)
+            df = 批次載入(鉛價庫, '鉛價', '年度數', 時間欄位='日期', 起始批號=2008).sort_values('日期')
+            df = df.set_index('日期')
+    except Exception as e:
+        logger.error(f'抓取{昨日}鉛價失敗，發生：{e}')
     return df
 
 @通知執行時間
