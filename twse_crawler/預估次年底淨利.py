@@ -45,7 +45,9 @@ def 預估次年底淨利(股票, 重新評估模型=False):
     except KeyError: pass
     try:
         西塔預估結果 = 預估至次年底每季值丙式(h.淨利)
-        月營收逐步推估淨利結果 = 以月營收逐步推估淨利(股票)
+        # 月營收逐步推估淨利結果 = 以月營收逐步推估淨利(股票)
+        from twse_crawler.營收預測營利模型 import 以營收預測次年淨利
+        月營收逐步推估淨利結果 = 以營收預測次年淨利(股票)
         from twse_crawler.鉛價分析 import 毛利受鉛價影響者
         from twse_crawler.鉛價分析 import 以鉛價預測次年淨利
         if 股票 in 毛利受鉛價影響者:

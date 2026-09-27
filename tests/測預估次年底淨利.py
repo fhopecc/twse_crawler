@@ -10,7 +10,7 @@ class Test(unittest.TestCase):
         from zhongwen.表 import 表示
         import zhongwen.快取
         zhongwen.快取.停止快取=True
-        股票 = '泰銘'
+        股票 = '鈊象'
         r = 預估次年底淨利(股票)
         表示(r, 顯示索引=True)
         self.assertFalse(True)
