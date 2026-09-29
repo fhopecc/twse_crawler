@@ -3,13 +3,13 @@ def 取以單元迴歸預估至次年底每季值模型(
     歷季應變數: "pd.Series"
 ) -> "pd.Series":
     """
-    一、比較以自變數 X 預測，及以時序預測應變數，取出較佳者
+    一、比較以滾動式 OLS 預測，及以時序預測應變數，取出較佳者
     二、主要欄位：模型擬合、模型名稱、採用指標、誤差率、較無腦模型改善率、
                   最佳訓練資料數、回測資料數。
     三、輔助欄位：指標說明、wmape、naive_wmape、snaive_wmape、
                  _y_原始、_y_最終訓練、_X_原始、_X_最終訓練。
-    四、最佳模型：係回測 4 季之評估指標最小 OLS 線性迴歸之訓練資料數。
-    五、搜尋次數：固定執行 30 次 Optuna 試驗，尋找最佳訓練視窗。
+    四、最佳模型：係回測 4 季以滾動式 OLS 評估指標最小之最佳訓練視窗。
+    五、搜尋次數：固定執行 30 次 Optuna 試驗，尋找最佳滾動訓練視窗大小。
     """
     # 1. 於函式內部進行套件導入
     import warnings
@@ -56,7 +56,7 @@ def 取以單元迴歸預估至次年底每季值模型(
 
     from twse_crawler.無腦預測至次年底每季值 import calc_wmape
 
-    # 4. 定義 Optuna 最佳化目標函數
+    # 4. 定義 Optuna 最佳化目標函數 (採逐季滾動驗證 Rolling Validation)
     def objective(trial):
         min_window = 8  # 最少 8 季 (2 年)
         max_window = len(y) - 回測季數
@@ -65,32 +65,36 @@ def 取以單元迴歸預估至次年底每季值模型(
         else:
             window_size = trial.suggest_int('window_size', min_window, max_window)
 
-        # 切分訓練集與驗證集
-        訓練起點 = max(0, len(y) - 回測季數 - window_size)
         訓練終點 = len(y) - 回測季數
-
-        y_train = y.iloc[訓練起點:訓練終點]
-        X_train = X_原始.iloc[訓練起點:訓練終點]
-
         y_validation = y.iloc[訓練終點:].values  # 未來 4 季真實應變數
-        X_validation = X_原始.iloc[訓練終點:]     # 驗證期的自變數
+        滾動預測陣列 = []
 
-        try:
-            # 加入常數項擬合 OLS
-            X_train_const = sm.add_constant(X_train, has_constant='add')
-            ols_model = sm.OLS(y_train, X_train_const)
-            模型擬合 = ols_model.fit()
+        # 逐季滾動訓練與預測（One-step-ahead Rolling Predictions）
+        for i in range(回測季數):
+            當前預測時間點 = 訓練終點 + i
+            視窗起點 = max(0, 當前預測時間點 - window_size)
 
-            # 預測驗證期
-            X_validation_const = sm.add_constant(X_validation, has_constant='add')
-            預測陣列 = 模型擬合.predict(X_validation_const).values
+            y_roll_train = y.iloc[視窗起點:當前預測時間點]
+            X_roll_train = X_原始.iloc[視窗起點:當前預測時間點]
+            X_roll_val = X_原始.iloc[當前預測時間點:當前預測時間點 + 1]
 
-            if pd.isna(預測陣列).any() or np.isinf(預測陣列).any() or len(預測陣列) != 回測季數:
+            try:
+                X_roll_train_const = sm.add_constant(X_roll_train, has_constant='add')
+                ols_model = sm.OLS(y_roll_train, X_roll_train_const)
+                model_fit = ols_model.fit()
+
+                X_roll_val_const = sm.add_constant(X_roll_val, has_constant='add')
+                pred = model_fit.predict(X_roll_val_const).values[0]
+                滾動預測陣列.append(pred)
+            except:
                 return float('inf')
-        except:
+
+        滾動預測陣列 = np.array(滾動預測陣列)
+
+        if pd.isna(滾動預測陣列).any() or np.isinf(滾動預測陣列).any() or len(滾動預測陣列) != 回測季數:
             return float('inf')
-            
-        當前_wmape = calc_wmape(y_validation, 預測陣列)
+
+        當前_wmape = calc_wmape(y_validation, 滾動預測陣列)
         trial.set_user_attr("wmape", float(當前_wmape))
 
         return 當前_wmape
@@ -119,15 +123,16 @@ def 取以單元迴歸預估至次年底每季值模型(
         y_best_train = y
         X_best_train = None
         is_ols = False
-    else: # OLS 迴歸模型勝出
+    else: # 滾動式 OLS 迴歸模型勝出
         誤差率 = best_wmape
+        # 最終模型採用最新的滾動視窗資料進行擬合，以用於未來外推預測
         最終訓練起點 = max(0, len(y) - 最佳訓練資料數)
         y_best_train = y.iloc[最終訓練起點:]
         X_best_train = X_原始.iloc[最終訓練起點:]
         X_best_train_const = sm.add_constant(X_best_train, has_constant='add')
         ols_final = sm.OLS(y_best_train, X_best_train_const)
         最終模型擬合 = ols_final.fit()
-        模型顯示名稱 = "OLS"
+        模型顯示名稱 = "滾動式 OLS (Rolling OLS)"
         is_ols = True
 
     return pd.Series({
@@ -150,7 +155,7 @@ def 以單元迴歸預估至次年底每季值(
     未來自變數: "pd.Series | pd.DataFrame",
 ) -> "pd.Series":
     """
-    一、傳回以單元迴歸及時間序列方式預測之誤差較小者。
+    一、傳回以滾動式 OLS 迴歸及時間序列方式預測之誤差較小者。
     二、預估結果項目：預估各季值、
                       模型名稱、誤差率、歷史值數量、預估值數量、回測資料數、
                       最佳訓練資料數、趨勢、自變數影響權重
@@ -202,13 +207,14 @@ def 以單元迴歸預估至次年底每季值(
 
     外推步數 = len(未來季度索引)
 
-    # 4. 分支處理外推未來預測值與模型參數 (OLS vs 純 Y 時序模型)
+    # 4. 分支處理外推未來預測值與模型參數 (滾動式 OLS vs 純 Y 時序模型)
     if is_ols:
+        # 使用最新的滾動視窗擬合出的參數，外推預測未來的 X
         X_未來_const = sm.add_constant(X_未來_有效, has_constant='add')
         預測值_array = 最終模型擬合.predict(X_未來_const)
         預估季_陣列 = pd.Series(預測值_array, index=未來季度索引)
         
-        # 提取 OLS 的斜率與 R2
+        # 提取最新滾動視窗下的斜率與 R2
         params = 最終模型擬合.params
         slope = params.iloc[1] if len(params) > 1 else 0.0
         rsquared = getattr(最終模型擬合, 'rsquared', np.nan)
