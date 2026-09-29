@@ -4,11 +4,11 @@ def 取以單元迴歸預估至次年底每季值模型(
 ) -> "pd.Series":
     """
     一、比較以滾動式 OLS 預測，及以時序預測應變數，取出較佳者
-    二、主要欄位：模型擬合、模型名稱、採用指標、誤差率、較無腦模型改善率、
+    二、主要欄位：模型擬合、模型名稱、採用指標、誤差率、
                   最佳訓練資料數、回測資料數。
     三、輔助欄位：指標說明、wmape、naive_wmape、snaive_wmape、
                  _y_原始、_y_最終訓練、_X_原始、_X_最終訓練。
-    四、最佳模型：係回測 4 季以滾動式 OLS 評估指標最小之最佳訓練視窗。
+    四、最佳模型：係回測 4 季以滾動式 OLS 評估指標最小之最佳訓練視窗(即最佳訓練資料數)。
     五、搜尋次數：固定執行 30 次 Optuna 試驗，尋找最佳滾動訓練視窗大小。
     """
     # 1. 於函式內部進行套件導入
@@ -132,7 +132,7 @@ def 取以單元迴歸預估至次年底每季值模型(
         X_best_train_const = sm.add_constant(X_best_train, has_constant='add')
         ols_final = sm.OLS(y_best_train, X_best_train_const)
         最終模型擬合 = ols_final.fit()
-        模型顯示名稱 = "滾動式 OLS (Rolling OLS)"
+        模型顯示名稱 = "滾動 OLS"
         is_ols = True
 
     return pd.Series({

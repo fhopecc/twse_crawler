@@ -188,5 +188,21 @@ if __name__ == '__main__':
     logging.getLogger('matplotlib').setLevel(logging.CRITICAL)
     logging.getLogger('faker').setLevel(logging.CRITICAL)
     # twse_crawler.行情分析.cache.clear()
-    df = 取最近上市櫃收盤行情()
+    # df = 取最近上市櫃收盤行情()
+    from twse_crawler.財報爬蟲 import 下載季報包
+    from twse_crawler.財報爬蟲 import 爬取資產負債表
+    from twse_crawler.財報爬蟲 import 爬取損益表
+    from twse_crawler.財報爬蟲 import 爬取現流表
+    from zhongwen.date import 季別
+    from zhongwen.時 import 取民國季度
+
+    # 應更新季度 = pd.Period('2025Q3', 'Q-DEC')
+    # 下載季報包(*季別(應更新季度), 重新下載=True)
+    # 爬取資產負債表(應更新季度)
+    # 爬取損益表(應更新季度)
+    # 爬取現流表(應更新季度)
+    from twse_crawler.財報分析 import 取財報彙總表, cache
+    # from twse_crawler.現流表分析 import 取現流表, cache
+    cache.clear()
+    df = 取財報彙總表('華南金')
     表示(df)
