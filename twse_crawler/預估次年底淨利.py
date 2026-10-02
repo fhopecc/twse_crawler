@@ -16,6 +16,7 @@ def 預估次年底淨利(股票, 重新評估模型=False):
     from twse_crawler.財報分析 import 取財報彙總表
     from twse_crawler.預估至次年底每季值 import 預估至次年底每季值丙式
     from twse_crawler.預估至次年底每季值 import 表達預估說明丙
+    from twse_crawler.營收預測營利模型 import 以營收預測次年淨利
     import zhongwen.快取
     import pandas as pd
     h = 取財報彙總表(股票)
@@ -34,7 +35,6 @@ def 預估次年底淨利(股票, 重新評估模型=False):
             return p
     except KeyError: pass
     try:
-        from twse_crawler.營收預測營利模型 import 以營收預測次年淨利
         月營收逐步推估淨利結果 = 以營收預測次年淨利(股票)
         from twse_crawler.鉛價分析 import 毛利受鉛價影響者
         from twse_crawler.鉛價分析 import 以鉛價預測次年淨利

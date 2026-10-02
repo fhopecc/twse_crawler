@@ -38,7 +38,7 @@ def 取股利表(股票=None):
     if 股票:
         股票代號 = 查股票代號(股票)
         df = 取股利表()
-        return df.query('公司代號==@股票代號')
+        return df.query('公司代號==@股票代號').dropna(subset=['公告日期']).sort_values('公告日期')
     try:
         抓取公司股利分派公告資料彙總表(今日)
     except Exception as e:

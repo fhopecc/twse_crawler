@@ -18,8 +18,8 @@ class Test(unittest.TestCase):
         from twse_crawler.股利分析 import 預測股利, 取上年度股利及說明
         from zhongwen.時 import 今日, 上年度
         from zhongwen.表 import 表示
-        # cache.clear()
-        r = 預測股利('星宇航空')
+        cache.clear()
+        r = 取股利表('數字')
         表示(r)
         # self.assertEqual(r, m)
         self.assertFalse(True)
