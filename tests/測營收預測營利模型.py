@@ -7,8 +7,8 @@ class Test(unittest.TestCase):
         from twse_crawler.財報分析 import 取財報彙總表
         from twse_crawler.營收分析 import 預測次年底營收
         from zhongwen.表 import 表示
-        股票 = '泰銘'
-        m = 以營收預測次年營利(股票)
+        股票 = '數字'
+        m = 以營收預測次年淨利(股票)
         表示(m)
         self.assertFalse(True)
 

@@ -1,5 +1,5 @@
 from zhongwen.庫 import 通知執行時間
-from zhongwen.快取 import 增加快取時序分析結果
+from zhongwen.快取 import 增加快取時序分析結果, 快取至記憶體
 from diskcache import Cache, Index
 from pathlib import Path
 import logging
@@ -29,7 +29,7 @@ def 抓取近一週上市櫃收盤行情():
             logger.info(f'已抓取{取正式民國日期(d)}收盤行情')
         d -= 一日
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取最近上市櫃收盤行情', expire=12*60*60)
 def 取最近上市櫃收盤行情(股票=None):
@@ -217,7 +217,7 @@ def kline(r):
     return svg
 
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 def 預測報酬率(股票, 重新分析=False):
     '''

@@ -1,6 +1,6 @@
 from twse_crawler.蒐整財務資訊 import 增加股票分析函數依資料時間更新快取功能
 from zhongwen.庫 import 通知執行時間, 增加定期更新
-from zhongwen.快取 import 增加快取時序分析結果
+from zhongwen.快取 import 增加快取時序分析結果, 快取至記憶體
 from twse_crawler.財報爬蟲 import 爬取上季財報
 from diskcache import Cache, Index
 from pathlib import Path
@@ -12,7 +12,7 @@ cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 
 損益表分析結果快取檔 = Index(str(Path.home() / 'cache' / '損益表分析結果快取檔'))
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取累積損益表', expire=24*60*60)
 def 取累積損益表(股票=None):
@@ -54,7 +54,6 @@ def 取累積損益表(股票=None):
     # 補正重大訊息公告數據，重大訊息不分合併及個別(如青鋼)，
     # 故合併及個別均轉為 N，意味非個體報表
     dfset = df.股票代號+df.財報日期.astype(str)+df.財報類型.map({"合併":'N', "個別":"N", "個體":"Y"})
-    
     try:
         df0 = 探勘公告財務報告表()
         df0.rename(columns={'公司代號':'股票代號'}, inplace=True)
@@ -84,9 +83,9 @@ def 取累積損益表(股票=None):
     df['業外損益'] = df.稅前淨利 - df.營利
     df['業外比重'] = df.apply(lambda r: r.業外損益/r.稅前淨利 if r.稅前淨利>0 else np.inf
                              ,axis='columns')
-    return df               
+    return df
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取損益表', expire=15*24*60*60)
 def 取損益表(股票=None, 個體報表=False):
@@ -118,7 +117,6 @@ def 取損益表(股票=None, 個體報表=False):
         return h
 
     df = 取累積損益表()
-    
     if 個體報表:
         df = df.query("財報類型=='個體'")
     else:
@@ -155,7 +153,7 @@ def 取損益表(股票=None, 個體報表=False):
     df['財報季度'] = df.財報日期.dt.to_period('Q')
     return df
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取移動年度損益表', expire=15*24*60*60)
 def 取移動年度損益表(股票=None, 個體報表=False):
@@ -233,7 +231,7 @@ def 取近年損益表(股票=None, 個體報表=False):
     df['營收'] = df.營收.fillna(0)
     return df
 
-@functools.cache
+@快取至記憶體
 @通知執行時間
 @cache.memoize('取年度損益表', expire=12*60*60)
 def 取年度損益表(股票=None):
