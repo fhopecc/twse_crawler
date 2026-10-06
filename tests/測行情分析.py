@@ -10,11 +10,11 @@ class Test(unittest.TestCase):
         from twse_crawler.蒐整財務資訊 import 蒐整財務資訊
         import twse_crawler.蒐整財務資訊 
         from zhongwen.表 import 表示, 數據不足
-        # df = 抓取近一週上市櫃收盤行情()
-        # cache.clear()
+        df = 抓取近一週上市櫃收盤行情()
+        cache.clear()
         # twse_crawler.蒐整財務資訊.cache.clear()
         # 蒐整財務資訊()
-        df = 取最近上市櫃收盤行情('一零四')
+        df = 取最近上市櫃收盤行情('數字')
         表示(df)
         self.assertFalse(True)
         self.assertFalse(df1.empty)
