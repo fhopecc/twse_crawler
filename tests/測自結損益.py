@@ -6,14 +6,15 @@ class Test(unittest.TestCase):
     '依方法名稱字母順序測試'
 
     def test(self):
-        from twse_crawler.自結損益 import 以自結營利預測次年每股盈餘
-        from twse_crawler.自結損益 import 以自結損益預測次年每股盈餘
+        from twse_crawler.自結損益 import 預測次年稅前損益, 以稅前損益預測次年淨利
         from twse_crawler.自結損益 import 取自結損益表, cache
         from zhongwen.表 import 數據不足, 表示
         from twse_crawler.公開資訊觀測站爬蟲 import 抓取月自結損益彙總表, 自結損益資料庫
         import zhongwen.快取
         zhongwen.快取.停止快取=True
-        r = 以自結營利預測次年每股盈餘('中鋼')
+        股票 = '華南金'
+        r = 以稅前損益預測次年淨利(股票)
+        # r = 預測次年稅前損益(股票)
         表示(r, 顯示索引=True, 顯示筆數=1000)
         self.assertTrue(False)
         # 豐興2013年12月有個別及合併2筆紀錄，刪除個別紀錄。
