@@ -209,7 +209,6 @@ def 取股票詳情連結(股票):
     from fhopecc.洄瀾打狗人札記 import 取錢商品錢貼文清單
     簡稱 = 查股票簡稱(股票)
     href = f"https://www.google.com/search?q={簡稱}"
-    
     df = 取錢商品錢貼文清單()
     df = df.query('title == @簡稱')
     if not df.empty:
@@ -220,3 +219,7 @@ def 取下市櫃股票代號() -> "pandas.Series":
     from twse_crawler.證交所爬蟲 import 抓取終止上市公司
     df = 抓取終止上市公司()
     return df.上市編號
+
+def 取股票上市櫃日期(股票):
+    i = 取股票基本資料彙總表(股票)
+    return i.iloc[0].上市櫃日期

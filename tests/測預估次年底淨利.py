@@ -6,12 +6,14 @@ class Test(unittest.TestCase):
     def test(self):
         from twse_crawler.預估次年底淨利 import 預估次年底淨利
         from twse_crawler.預估次年底淨利 import 以淨利預測次年每股盈餘
-        from twse_crawler.損益表分析 import 取損益表
+        from twse_crawler.財報分析 import 取財報彙總表, cache
         from zhongwen.表 import 表示
         import zhongwen.快取
         zhongwen.快取.停止快取=True
-        股票 = '遠傳'
-        r = 預估次年底淨利(股票, 重新評估模型=True)
+        股票 = '元大期'
+        cache.clear()
+        r = 取財報彙總表(股票)
+        # r = 以淨利預測次年每股盈餘(股票)
         表示(r, 顯示索引=True)
         self.assertFalse(True)
 

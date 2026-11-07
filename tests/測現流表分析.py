@@ -11,8 +11,8 @@ class Test(unittest.TestCase):
         from twse_crawler.財報分析 import 取財報彙總表
         from zhongwen.表 import 表示
         import twse_crawler.財報分析
-        twse_crawler.財報分析.cache.clear()
-        r = 分析現金流('崑鼎')
+        cache.clear()
+        r = 取累積現流表('元大期')
         表示(r)
         self.assertFalse(True)
 

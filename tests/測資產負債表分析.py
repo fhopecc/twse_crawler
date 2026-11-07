@@ -9,11 +9,13 @@ class Test(unittest.TestCase):
     def test(self):
         from twse_crawler.資產負債表分析 import 分析骯髒科目, 分析負債
         from twse_crawler.資產負債表分析 import 分析客戶保證金
-        from twse_crawler.資產負債表分析 import 取資產負債表
+        from twse_crawler.資產負債表分析 import 取資產負債表, cache
         from twse_crawler.負債分析 import 分析負債結構
         import twse_crawler
         from zhongwen.表 import 顯示, 表示
-        r = 分析有息負債('一零四')
+        股票 = '長榮鋼'
+        cache.clear()
+        r = 取資產負債表(股票)
         表示(r)
         self.assertFalse(True)
         twse_crawler.資產負債表分析.cache.clear()

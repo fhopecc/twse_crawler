@@ -15,7 +15,7 @@ cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 @快取至記憶體
 @通知執行時間
 @cache.memoize('取累積損益表', expire=24*60*60)
-def 取累積損益表(股票=None):
+def 取累積損益表(股票=None, 個體財報=False):
     '''
     一、指定股票則傳回該股票歷史累積損益表。
     二、取財報檔之損益表，另以重大訊息公告損益表補充，並排除逾一年未公布財報者。
@@ -35,9 +35,15 @@ def 取累積損益表(股票=None):
     # 刪除指定名稱快取(cache, '探勘公告財務報告表')
 
     if 股票:
+        from twse_crawler.股票基本資料分析 import 取股票上市櫃日期
+        上市櫃日期 = 取股票上市櫃日期(股票)
         股票代號 = 查股票代號(股票)
         df = 取累積損益表()
-        return df.query('股票代號==@股票代號')
+        if not 個體財報:
+            return df.query('股票代號==@股票代號 and 財報類型!="個體" and 財報日期 >= @上市櫃日期')
+        else:
+            return df.query('股票代號==@股票代號 and 財報類型=="個體" and 財報日期 >= @上市櫃日期')
+
 
     renames = {'營業收入合計':'營收'
               ,'營業毛利（毛損）':'毛利'

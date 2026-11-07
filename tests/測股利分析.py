@@ -19,7 +19,7 @@ class Test(unittest.TestCase):
         from zhongwen.時 import 今日, 上年度
         from zhongwen.表 import 表示
         cache.clear()
-        r = 取股利表('數字')
+        r = 預測股利('元大期')
         表示(r)
         # self.assertEqual(r, m)
         self.assertFalse(True)
@@ -142,7 +142,6 @@ class Test(unittest.TestCase):
                               'and (特別股配息==0 or 特別股配息.isna())')
         顯示(股利為零或空值者)
         self.assertTrue(股利為零或空值者.empty)
-        
         # 台泥應過濾105年重覆公告股利
         台泥股利 = df.query('公司代號=="1101"')
         # 顯示(台泥股利)

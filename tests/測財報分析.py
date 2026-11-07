@@ -6,15 +6,18 @@ class Test(unittest.TestCase):
     '依方法名稱字母順序測試'
     def test(self):
         import twse_crawler.資產負債表分析
+        from twse_crawler.資產負債表分析 import 取資產負債表
+        from twse_crawler.損益表分析 import 取損益表
+        from twse_crawler.現流表分析 import 取現流表
         import twse_crawler.財報分析
         from twse_crawler.財報分析 import 分析資產負債科目占比
+        from twse_crawler.財報分析 import 取財報彙總表
         from twse_crawler.財報分析 import 評定資產風險扣分
+        from twse_crawler.財報分析 import 股票歷史財報是否缺漏
         from zhongwen.表 import 表示
-        twse_crawler.資產負債表分析.cache.clear()
-        twse_crawler.財報分析.cache.clear()
-
-        r = 評定資產風險扣分('1101')
-        表示(r, 顯示筆數=1000)
+        twse_crawler.財報分析.刪除財報彙總相關快取()
+        股票 = '長榮鋼'
+        r = 股票歷史財報是否缺漏(股票)
         self.assertFalse(True)
 
     def test取歷年營收占台積電資本資出比例(self):

@@ -29,18 +29,25 @@ def 取資產負債表(股票=None, 個體報表=False):
               長期借款、應付公司債、
               股本合計、權益總額、權益總計、
               母公司暨子公司所持有之母公司庫藏股股數（單位：股）
-    四、指定參數「股票」，係傳回指定個股之資產負債表，依財報季度索引並排序。
+    四、指定參數「股票」，係傳回指定個股上市櫃後之資產負債表，依財報季度索引並排序。
     '''
     from twse_crawler.股票基本資料分析 import 查股票代號, 查股票簡稱
     from twse_crawler.損益表分析 import 取近年損益表
     from twse_crawler.現流表分析 import 取近年現流表
     from zhongwen.庫 import 批次載入
     from zhongwen.表 import 表示
+    from zhongwen.時 import 取期間斷點
 
     if 股票:
         股票代號 = 查股票代號(股票)
         df = 取資產負債表(個體報表=個體報表)
-        h = df.query('股票代號==@股票代號')
+
+        from twse_crawler.股票基本資料分析 import 取股票上市櫃日期
+        上市櫃日期 = 取股票上市櫃日期(股票)
+        h = df.query('股票代號==@股票代號 and 財報日期 >= @上市櫃日期')
+
+        gaps = 取期間斷點(h.財報季度)
+        assert gaps.empty, f'{股票}財報季度存有斷點：\n{gaps }'
         h['財報季度索引'] = h.財報季度
         h = h.set_index('財報季度索引')
         return h.sort_index()

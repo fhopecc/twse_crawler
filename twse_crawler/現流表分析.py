@@ -12,21 +12,33 @@ cache = Cache(Path.home() / 'cache' / Path(__file__).stem)
 @cache.memoize('取累積現流表', expire=12*60*60)
 def 取累積現流表(股票=None, 個體報表=False):
     '''
-    一、主鍵：股票代號、財報類型、財報日期。
+    一、主鍵：股票代號、財報類型、財報日期、財報季度。
     二、欄位：營運產生之現金流入（流出）、營業活動之淨現金流入（流出）、
               取得不動產、廠房及設備、投資活動之淨現金流入（流出）、
               籌資活動之淨現金流入（流出）、
               匯率變動對現金及約當現金之影響、本期現金及約當現金增加（減少）數
+    三、針對財報季度作斷點檢查。
+    四、財報季度為頻率為季度的期間(period_index, freq='Q')。
     '''
     from twse_crawler.股票基本資料分析 import 查股票代號
     from zhongwen.庫 import 批次載入
+    from zhongwen.時 import 取期間斷點
     from twse_crawler import 財報爬蟲
+    from zhongwen.表 import 表示
+    import pandas as pd
     if 股票:
         股票代號 = 查股票代號(股票)
         df = 取累積現流表(個體報表=個體報表)
-        return df.query('股票代號==@股票代號')
+
+        from twse_crawler.股票基本資料分析 import 取股票上市櫃日期
+        上市櫃日期 = 取股票上市櫃日期(股票)
+        h = df.query('股票代號==@股票代號 and 財報日期 >= @上市櫃日期')
+        gaps = 取期間斷點(df.財報季度)
+        assert gaps.empty, f'{股票}財報季度存有斷點：\n{gaps}'
+        return h
     df = 批次載入(財報爬蟲.現流表資料庫, '現流表', '財報日期', '財報日期')
     df = df.drop_duplicates(subset=["股票代號", "財報類型", "財報日期"], keep='first')
+    df['財報季度'] = pd.PeriodIndex(df.財報日期, freq='Q')
     if 個體報表:
         df = df.query("財報類型=='個體'")
     else:

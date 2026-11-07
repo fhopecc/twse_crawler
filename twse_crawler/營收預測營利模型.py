@@ -79,7 +79,6 @@ def 以營收預測次年淨利(股票, 回滾季數=0, 估算模型誤差率=Tr
     if 估算模型誤差率:
         y_true = 歷季損益表.淨利.iloc[-4:]
         y_pred = 以營收預測次年淨利(股票, 回滾季數=4, 估算模型誤差率=False).預估各季值
-        # 表示(以營收預測次年淨利(股票, 回滾季數=4, 估算模型誤差率=False))
         y_pred = y_pred.loc[y_true.index]
         模型誤差率 = calc_wmape(y_true, y_pred)
         from twse_crawler.預估至次年底每季值 import 預估至次年底每季值丙式

@@ -10,7 +10,7 @@ class Test(unittest.TestCase):
 
     def test(self):
         from twse_crawler.損益表分析 import 取累積損益表, 取損益表, 取移動年度損益表
-        from twse_crawler.損益表分析 import 預估業外損益
+        from twse_crawler.損益表分析 import 預估業外損益, cache
         from twse_crawler.股票基本資料分析 import 查股票代號, cache as cacheb
         from twse_crawler.損益表分析 import 檢測營收及毛利率關係
         from twse_crawler.損益表分析 import 以淨利預測次年每股盈餘
@@ -19,7 +19,9 @@ class Test(unittest.TestCase):
         import twse_crawler
         # twse_crawler.損益表分析.cache.clear()
         # r = 以淨利預測次年每股盈餘('數字')
-        r = 以淨利預測次年每股盈餘('一零四')
+        cache.clear()
+        股票 = '元大期'
+        r = 取累積損益表(股票)
         表示(r)
         self.assertFalse(True)
         r = 檢測營收及毛利率關係('泰銘')

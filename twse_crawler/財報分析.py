@@ -52,6 +52,8 @@ def 取財報彙總表(股票=None, 個體報表=False):
         股票代號 = 查股票代號(股票)
         df = 取財報彙總表(個體報表=個體報表)
         h = df.query('股票代號==@股票代號')
+
+        h['財報季度索引'] = h.財報季度
         h['財報季度索引'] = h.財報季度
         h = h.set_index('財報季度索引')
         return h.sort_index()
@@ -759,3 +761,36 @@ def 評定資產風險扣分(股票):
     m.append(f'【{營收動能分析結果.營收模式}型公司其前五大科目】：{r.前五大科目}')
     r['評語'] = '；'.join(m)
     return r
+
+def 股票歷史財報是否缺漏(股票):
+    from zhongwen.時 import 取期間斷點
+    from twse_crawler.股票基本資料分析 import 取股票上市櫃日期
+    from zhongwen.表 import 表示
+    上市櫃日期 = 取股票上市櫃日期(股票)
+    h = 取財報彙總表(股票)
+    h = h.query('財報日期 >= @上市櫃日期')
+    gaps = 取期間斷點(h.財報季度)
+    if not gaps.empty:
+        logger.info(f'{股票}財報季度存有斷點：\n{gaps}')
+    return gaps.empty
+
+def 刪除財報彙總相關快取():
+    import twse_crawler
+    twse_crawler.財報分析.cache.clear()
+    twse_crawler.資產負債表分析.cache.clear()
+    twse_crawler.資產負債表分析.取資產負債表.cache_clear()
+    twse_crawler.現流表分析.cache.clear()
+    twse_crawler.現流表分析.取累積現流表.cache_clear()
+    twse_crawler.現流表分析.取現流表.cache_clear()
+    twse_crawler.現流表分析.取年度現流表.cache_clear()
+    twse_crawler.現流表分析.取移動年度現流表.cache_clear()
+    twse_crawler.現流表分析.取近年現流表.cache_clear()
+    twse_crawler.損益表分析.cache.clear()
+    twse_crawler.損益表分析.取累積損益表.cache_clear()
+    twse_crawler.損益表分析.取損益表.cache_clear()
+    twse_crawler.損益表分析.取年度損益表.cache_clear()
+    twse_crawler.損益表分析.取移動年度損益表.cache_clear()
+    import twse_crawler.財報分析
+    twse_crawler.財報分析.cache.clear()
+    twse_crawler.財報分析.取財報彙總表.cache_clear()
+

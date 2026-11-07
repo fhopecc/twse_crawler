@@ -386,6 +386,7 @@ def 預測股利(股票, 歷年股利=None):
                 誤差率 = 1
             break
         except (數據不足, 無法預估盈餘, ValueError) as e:
+            print(f'預測{股票}每股盈餘發生：{e}')
             continue
     else: # 依歷年股利預測股利
         前年至次年股利, 預測股利說明, *_ = 依歷年股利預測股利(股票) 
