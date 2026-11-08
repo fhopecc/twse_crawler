@@ -11,7 +11,7 @@ class Test(unittest.TestCase):
         from zhongwen.表 import 表示
         import zhongwen.快取
         zhongwen.快取.停止快取 = True
-        r = 評級股票('元大期', 告示例外=True)
+        r = 評定基礎分數('元大期')
         表示(r)
         self.assertFalse(True)
         df = 取在線分析結果明細('一零四')

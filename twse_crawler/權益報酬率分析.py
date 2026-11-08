@@ -11,9 +11,13 @@ def 分析股東權益報酬率(股票) -> 'pandas.Series':
     import numpy as np
     import statsmodels.api as sm
     from twse_crawler.財報分析 import 取財報彙總表
+    from zhongwen.表 import 表示
 
     歷史季度財報 = 取財報彙總表(股票)
-    歷史季度財報["股東權益"] = 歷史季度財報.權益總額
+    歷史季度財報["股東權益"] = 歷史季度財報.權益總計.fillna(
+                                 歷史季度財報.權益總額.fillna(
+                                   歷史季度財報.權益
+                                   ))
     # 1. 建立 TTM 數據
     歷史季度財報["滾動四季淨利"] = 歷史季度財報["淨利"].rolling(window=4).sum()
     歷史季度財報["滾動平均股東權益"] = (

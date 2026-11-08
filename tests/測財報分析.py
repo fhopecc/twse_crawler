@@ -16,8 +16,9 @@ class Test(unittest.TestCase):
         from twse_crawler.財報分析 import 股票歷史財報是否缺漏
         from zhongwen.表 import 表示
         twse_crawler.財報分析.刪除財報彙總相關快取()
-        股票 = '長榮鋼'
-        r = 股票歷史財報是否缺漏(股票)
+        股票 = '元大期'
+        r = 評定資產風險扣分(股票)
+        print(r)
         self.assertFalse(True)
 
     def test取歷年營收占台積電資本資出比例(self):

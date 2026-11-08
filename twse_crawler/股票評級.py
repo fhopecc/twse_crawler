@@ -36,6 +36,8 @@ def 評級股票(股票, 告示例外=True, 例外為空=False) -> "pandas.Serie
         if not r.empty and len(r.評語) > 0:
             分數 = r.分數
             評語 = r.評語
+        else:
+            raise ValueError('評定{股票}之基礎分數為空')
     except ValueError as e:
         logger.error(f'評定{股票}之基礎分數發生：{e}')
 
@@ -66,7 +68,7 @@ def 分析護城河(股票):
     from twse_crawler.財報分析 import 彙總分析
     r = 彙總分析(股票, [分析公司產業, 人工分析護城河])
     return r
-    
+
 def 分析經營效率(股票):
     '''
     一、分析結果：分數、評語。

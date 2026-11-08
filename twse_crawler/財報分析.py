@@ -34,12 +34,13 @@ def 取財報彙總表(股票=None, 個體報表=False):
                         負債準備－流動、租賃負債－流動、其他流動負債、
                         非流動負債合計、一年或一營業週期內到期長期負債、
                         長期借款、應付公司債、其他非流動負債、
-                        股本合計、權益總額、權益總計
+                        股本合計、權益總額、權益總計、權益
     七、現流表欄位：營運產生之現金流入（流出）、營業活動之淨現金流入（流出）、
                     折舊費用、攤銷費用、
                     取得不動產、廠房及設備、投資活動之淨現金流入（流出）、
                     籌資活動之淨現金流入（流出）、
                     匯率變動對現金及約當現金之影響、本期現金及約當現金增加（減少）數
+    八、權益總額、權益總計(通常包含非控制權益)、權益係加總時科目
     '''
     from twse_crawler.股票基本資料分析 import 查股票代號, 查股票簡稱
     from twse_crawler.資產負債表分析 import 取資產負債表
@@ -776,7 +777,6 @@ def 股票歷史財報是否缺漏(股票):
 
 def 刪除財報彙總相關快取():
     import twse_crawler
-    twse_crawler.財報分析.cache.clear()
     twse_crawler.資產負債表分析.cache.clear()
     twse_crawler.資產負債表分析.取資產負債表.cache_clear()
     twse_crawler.現流表分析.cache.clear()
@@ -790,7 +790,5 @@ def 刪除財報彙總相關快取():
     twse_crawler.損益表分析.取損益表.cache_clear()
     twse_crawler.損益表分析.取年度損益表.cache_clear()
     twse_crawler.損益表分析.取移動年度損益表.cache_clear()
-    import twse_crawler.財報分析
     twse_crawler.財報分析.cache.clear()
     twse_crawler.財報分析.取財報彙總表.cache_clear()
-
