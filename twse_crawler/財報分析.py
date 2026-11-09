@@ -775,7 +775,10 @@ def 股票歷史財報是否缺漏(股票):
         logger.info(f'{股票}財報季度存有斷點：\n{gaps}')
     return gaps.empty
 
-def 刪除財報彙總相關快取():
+def 清除財報分析快取():
+    '''
+    一、清除行情分析快取，包含函數快取。
+    '''
     import twse_crawler
     twse_crawler.資產負債表分析.cache.clear()
     twse_crawler.資產負債表分析.取資產負債表.cache_clear()
@@ -790,5 +793,5 @@ def 刪除財報彙總相關快取():
     twse_crawler.損益表分析.取損益表.cache_clear()
     twse_crawler.損益表分析.取年度損益表.cache_clear()
     twse_crawler.損益表分析.取移動年度損益表.cache_clear()
-    twse_crawler.財報分析.cache.clear()
-    twse_crawler.財報分析.取財報彙總表.cache_clear()
+    cache.clear()
+    取財報彙總表.cache_clear()

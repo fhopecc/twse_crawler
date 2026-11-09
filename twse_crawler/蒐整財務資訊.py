@@ -21,6 +21,7 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
             若作業時間確有不及，應於每季終了後60日內(5/30、11/29前)補正。
     四、每月15日前會先執行抓取上月營收彙總表更新月營收表資料。
     '''
+    import twse_crawler
     import twse_crawler.股票基本資料分析
     from tabulate import tabulate
     from twse_crawler.行情分析 import 抓取近一週上市櫃收盤行情
@@ -113,26 +114,9 @@ def 蒐整財務資訊(僅顯示落後資訊不予更新=False):
             print(tabulate(df_lag))
             if not 僅顯示落後資訊不予更新:
                 抓取月自結損益彙總表(本月-lag_mon+1)
-
-    twse_crawler.行情分析.cache.clear()
-    twse_crawler.行情分析.取最近上市櫃收盤行情.cache_clear()
-    twse_crawler.行情分析.預測報酬率.cache_clear()
-    twse_crawler.資產負債表分析.cache.clear()
-    twse_crawler.資產負債表分析.取資產負債表.cache_clear()
-    twse_crawler.現流表分析.cache.clear()
-    twse_crawler.現流表分析.取累積現流表.cache_clear()
-    twse_crawler.現流表分析.取現流表.cache_clear()
-    twse_crawler.現流表分析.取年度現流表.cache_clear()
-    twse_crawler.現流表分析.取移動年度現流表.cache_clear()
-    twse_crawler.現流表分析.取近年現流表.cache_clear()
-    twse_crawler.損益表分析.cache.clear()
-    twse_crawler.損益表分析.取累積損益表.cache_clear()
-    twse_crawler.損益表分析.取損益表.cache_clear()
-    twse_crawler.損益表分析.取年度損益表.cache_clear()
-    twse_crawler.損益表分析.取移動年度損益表.cache_clear()
-    import twse_crawler.財報分析
-    twse_crawler.財報分析.cache.clear()
-    twse_crawler.財報分析.取財報彙總表.cache_clear()
+    import twse_crawler
+    twse_crawler.財報分析.清除財報分析快取()
+    twse_crawler.行情分析.清除行情分析快取()
     twse_crawler.自結損益.cache.clear()
     twse_crawler.營收分析.cache.clear()
 
